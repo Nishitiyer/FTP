@@ -132,6 +132,8 @@ const App = () => {
             activeTransfer={activeTransfer} 
             clientFiles={clientFiles} 
             serverFiles={serverFiles} 
+            onCommand={handleCommand}
+            onStart={startSession}
          />
       </div>
 
