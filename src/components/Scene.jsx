@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { 
   Float, 
@@ -11,197 +11,250 @@ import {
   Box,
   Sphere,
   Torus,
+  Cylinder,
   MeshDistortMaterial,
-  MeshWobbleMaterial
+  MeshTransmissionMaterial,
+  PerspectiveCamera as PCamera
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { FTP_STATES } from '../logic/ftpProtocol';
 
-const TechTower = ({ position, color, label, active, onAction, actionLabel }) => {
-  const ringRef = useRef();
-  
-  useFrame((state) => {
-    if (ringRef.current) {
-      ringRef.current.rotation.z += 0.01;
-      ringRef.current.rotation.x += 0.005;
-    }
-  });
+// -------------------------------------------------------------
+// Cinematic Glass UI Panel (Floating in 3D)
+// -------------------------------------------------------------
+const FloatingHologram = ({ title, subtitle, items, color = "#0ea5e9", position, rotation = [0, 0, 0] }) => (
+  <group position={position} rotation={rotation}>
+    <Html transform distanceFactor={5} rotation={[0, 0, 0]}>
+       <div className="relative group">
+          {/* Main Glass Panel */}
+          <div className="w-[320px] p-6 bg-black/40 backdrop-blur-2xl border-l-4 border-t border-white/10 rounded-tr-3xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] overflow-hidden"
+               style={{ borderLeftColor: color }}>
+             
+             {/* Hologram Scanner Line FX */}
+             <div className="absolute top-0 left-0 w-full h-[1px] bg-sky-400 opacity-20 animate-scan pointer-events-none" />
+             
+             <header className="mb-4 border-b border-white/5 pb-2">
+                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] block mb-1">{subtitle}</span>
+                <h3 className="text-[22px] font-black italic uppercase tracking-wider m-0" style={{ color }}>{title}</h3>
+             </header>
 
+             <div className="flex flex-col gap-3">
+                {items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between group/row">
+                     <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-[11px] font-bold text-white/80 tracking-widest">{item.label}</span>
+                     </div>
+                     <span className="text-[10px] font-mono text-white/20">{item.status || "IDLE"}</span>
+                  </div>
+                ))}
+             </div>
+
+             {/* Tech Grid Background Deco */}
+             <div className="absolute bottom-[-20px] right-[-20px] opacity-10 pointer-events-none">
+                <div className="w-40 h-40 border border-white/20 rotate-45" />
+             </div>
+          </div>
+          
+          {/* Floating Corners */}
+          <div className="absolute -top-2 -left-2 w-4 h-4 border-t-2 border-l-2" style={{ borderColor: color }} />
+          <div className="absolute -bottom-2 -right-2 w-4 h-4 border-b-2 border-r-2" style={{ borderColor: color }} />
+       </div>
+    </Html>
+  </group>
+);
+
+// -------------------------------------------------------------
+// High-Fidelity Client Base
+// -------------------------------------------------------------
+const ClientBase = ({ position, active, files }) => {
   return (
-    <group position={position} scale={2}>
-      {/* Structural Core */}
-      <Box args={[3, 10, 3]}>
-        <meshPhysicalMaterial color="#020a12" roughness={0.1} metalness={1} clearcoat={1} />
-        <Edges color={color} opacity={0.6} />
+    <group position={position}>
+      {/* Heavy Industrial Base */}
+      <Box args={[12, 1, 10]} position={[0, 0, 0]}>
+        <meshPhysicalMaterial color="#020617" roughness={0.1} metalness={1} />
+        <Edges color="#0ea5e9" opacity={0.5} />
+      </Box>
+      <Box args={[11, 0.5, 9]} position={[0, 0.75, 0]}>
+        <meshPhysicalMaterial color="#01040a" roughness={0.3} metalness={0.8} />
       </Box>
 
-      {/* Floating Energy Rings */}
-      <group ref={ringRef} position={[0, 5, 0]}>
-         <Torus args={[2.8, 0.05, 16, 100]} rotation={[Math.PI/2, 0, 0]}>
-            <meshBasicMaterial color={color} transparent opacity={0.4} />
-         </Torus>
-         <Torus args={[3.2, 0.03, 16, 100]} rotation={[0, Math.PI/2, 0]}>
-            <meshBasicMaterial color={color} transparent opacity={0.2} />
-         </Torus>
-      </group>
-
-      {/* Internal Glimmer Pulse */}
-      <Box args={[2.5, 9, 2.5]} position={[0, 0, 0]}>
-         <MeshWobbleMaterial color={color} factor={0.1} speed={2} transparent opacity={0.1} />
+      {/* Internal Core Lights */}
+      <Box args={[8, 0.2, 6]} position={[0, 1.1, 0]}>
+         <meshBasicMaterial color="#0ea5e9" transparent opacity={0.1} />
       </Box>
 
-      {/* Data Transmission Beam (Active) */}
-      {active && (
-        <group position={[0, 12, 0]}>
-           <Cylinder args={[0.1, 0.1, 15, 8]} position={[0, -7.5, 0]}>
-              <meshBasicMaterial color={color} transparent opacity={0.3} />
-           </Cylinder>
-           <pointLight color={color} intensity={5} distance={20} />
-        </group>
-      )}
+      {/* Floating File Cubes (Crystalline/High Refraction) */}
+      {files.map((f, i) => (
+        <Float key={f.name} speed={2} position={[(i % 3 - 1) * 2.5, 3 + Math.floor(i/3)*2, (Math.floor(i/3) % 2 === 0 ? 1 : -1)]}>
+           <Box args={[1.2, 1.2, 1.2]}>
+              <MeshTransmissionMaterial 
+                thickness={1} 
+                anisotropy={0.3} 
+                ior={1.2} 
+                transmission={1} 
+                samples={10} 
+                color="#7dd3fc"
+                emissive="#0ea5e9"
+                emissiveIntensity={0.2}
+              />
+              <Edges color="#bae6fd" />
+           </Box>
+        </Float>
+      ))}
 
-      {/* Main Terminal Overlay */}
-      <Html position={[0, 11, 0]} center transform distanceFactor={10}>
-         <div className="flex flex-col items-center gap-3">
-            <div className="px-4 py-1 bg-black/80 border border-white/10 tech-panel shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-               <span className="text-[16px] font-black tracking-[0.6em] text-white/90 uppercase">{label}</span>
-            </div>
-            
-            {onAction && (
-              <button 
-                onClick={onAction} 
-                className="px-6 py-2 bg-white/5 border border-white/20 text-[10px] uppercase font-black tracking-widest text-[#0ea5e9] hover:bg-[#0ea5e9] hover:text-white transition-all transform hover:scale-110 shadow-lg"
-              >
-                {actionLabel}
-              </button>
-            )}
-         </div>
-      </Html>
-
-      {/* Protocol Explanation Float */}
-      <Html position={[4, 2, 0]} transform distanceFactor={12}>
-         <div className="p-4 cyber-panel bg-black/90 w-[240px] border-l-4" style={{ borderLeftColor: color }}>
-            <span className="text-[11px] font-black uppercase tracking-widest block mb-1" style={{ color }}>Role_Assignment</span>
-            <p className="text-[8px] text-white/50 leading-relaxed font-mono italic">
-               Executing FTP socket-binding logic. This node manages persistent state and binary stream negotiation on Port 20/21.
-            </p>
-         </div>
-      </Html>
+      {/* Client HUD Panel */}
+      <FloatingHologram 
+        title="FTP_CLIENT_A" 
+        subtitle="SOURCE_NODE_AUTH_SECURE" 
+        position={[-12, 6, 0]} 
+        rotation={[0, Math.PI/6, 0]}
+        items={[
+          { label: "IP: 192.168.1.50", status: "STABLE" },
+          { label: "PROTOCOL: FTP/SSL", status: "ACTIVE" },
+          { label: `VAULT: ${files.length} ITEMS`, status: "INDEXED" }
+        ]}
+      />
     </group>
   );
 };
 
-const DataShard = ({ position, label, color }) => (
-  <Float speed={2} rotationIntensity={1} floatIntensity={1} position={position}>
-     <Box args={[0.6, 0.6, 0.6]}>
-        <MeshDistortMaterial color={color} speed={2} distort={0.3} roughness={0} metalness={1} transmission={0.9} />
-        <Edges color="#ffffff" opacity={0.5} />
-        <Html position={[0, -0.8, 0]} center transform>
-           <span className="text-[6px] font-black text-white/40 uppercase whitespace-nowrap">{label}</span>
-        </Html>
-     </Box>
-  </Float>
+// -------------------------------------------------------------
+// High-Fidelity Server Monolith
+// -------------------------------------------------------------
+const ServerMonolith = ({ position, active, files }) => (
+  <group position={position}>
+    {/* Massive Detailed Tower */}
+    <Box args={[10, 25, 10]} position={[0, 12, 0]}>
+      <meshPhysicalMaterial color="#01040a" roughness={0.1} metalness={1} />
+      <Edges color="#10b981" opacity={0.3} />
+    </Box>
+
+    {/* Side Ribs & Tech Detailing */}
+    {[5, 10, 15, 20].map(y => (
+      <group key={y} position={[0, y, 0]}>
+        <Box args={[10.5, 0.5, 10.5]}>
+           <meshPhysicalMaterial color="#020617" metalness={1} />
+           <Edges color="#10b981" opacity={0.8} />
+        </Box>
+        {active && <pointLight color="#10b981" intensity={2} distance={15} />}
+      </group>
+    ))}
+
+    {/* Main Information Panel (Holographic Projection) */}
+    <FloatingHologram 
+       title="REMOTE_SERVER" 
+       subtitle="TARGET_STORAGE_UNIT" 
+       color="#10b981"
+       position={[12, 15, 0]} 
+       rotation={[0, -Math.PI/6, 0]}
+       items={[
+          { label: "IP: 104.22.7.201", status: active ? "CONNECTED" : "WAITING" },
+          { label: "LINK: DATA_SYNC", status: active ? "READY" : "OFFLINE" },
+          { label: "CAPACITY: 4.2TB", status: "PROVISIONED" }
+       ]}
+    />
+  </group>
 );
 
-const NetworkTube = ({ p1, p2, color }) => {
-  const curve = useMemo(() => new THREE.CatmullRomCurve3([
-    new THREE.Vector3(...p1),
-    new THREE.Vector3(0, 8, 0),
-    new THREE.Vector3(...p2)
-  ]), [p1, p2]);
+// -------------------------------------------------------------
+// The "FTP LINK" Pipe System
+// -------------------------------------------------------------
+const FTPLinkPipe = ({ p1, p2, color, label, offset = 0 }) => {
+  const curve = useMemo(() => {
+    const v1 = new THREE.Vector3(...p1);
+    const v2 = new THREE.Vector3(...p2);
+    const mid = new THREE.Vector3(0, 15 + offset, 0);
+    return new THREE.CatmullRomCurve3([v1, mid, v2]);
+  }, [p1, p2, offset]);
 
   return (
     <group>
+      {/* Heavy Exterior Tube */}
       <mesh>
-        <tubeGeometry args={[curve, 64, 0.1, 12, false]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6} />
+        <tubeGeometry args={[curve, 100, 1.2, 16, false]} />
+        <meshPhysicalMaterial color={color} transmission={0.9} transparent opacity={0.2} roughness={0.1} />
       </mesh>
+      {/* Inner Fiber Core */}
       <mesh>
-        <tubeGeometry args={[curve, 64, 0.3, 12, false]} />
-        <meshPhysicalMaterial color={color} transparent opacity={0.1} roughness={0} transmission={0.9} />
+        <tubeGeometry args={[curve, 100, 0.4, 16, false]} />
+        <meshBasicMaterial color={color} transparent opacity={0.8} />
       </mesh>
-    </group>
-  );
-};
 
-const PacketFlow = ({ p1, p2, packets }) => {
-  const curve = useMemo(() => new THREE.CatmullRomCurve3([
-    new THREE.Vector3(p1[0], 0.2, p1[2]),
-    new THREE.Vector3(0, 8, 0),
-    new THREE.Vector3(p2[0], 0.2, p2[2])
-  ]), [p1, p2]);
-
-  return (
-    <>
-      {packets.map(p => (
-        <Packet key={p.id} curve={curve} dir={p.dir} label={p.label} color={p.type === 'control' ? "#38bdf8" : "#10b981"} />
-      ))}
-    </>
-  );
-};
-
-const Packet = ({ curve, dir, label, color }) => {
-  const packetRef = useRef();
-  useFrame((state) => {
-    const t = (state.clock.getElapsedTime() * 0.5) % 1;
-    const progress = dir === 'c2s' ? t : 1 - t;
-    packetRef.current.position.copy(curve.getPoint(progress));
-  });
-
-  return (
-    <group ref={packetRef}>
-       <Sphere args={[0.3, 16, 16]}>
-          <meshBasicMaterial color={color} />
-       </Sphere>
-       <pointLight color={color} intensity={3} distance={5} />
-       <Html center>
-          <div className="text-[7px] font-black text-white bg-black/60 px-2 rounded border border-white/10 uppercase">{label}</div>
-       </Html>
+      {/* Path Label */}
+      <Html position={[0, 12 + offset, 0]} center transform>
+         <div className="bg-black/80 px-4 py-1 border border-white/20 whitespace-nowrap">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color }}>{label}</span>
+         </div>
+      </Html>
     </group>
   );
 };
 
 export const Scene = ({ ftpState, packets, activeTransfer, clientFiles, serverFiles, onCommand, onStart }) => {
   return (
-    <div className="absolute inset-0 w-full h-full z-0 pointer-events-auto">
-      <Canvas shadows gl={{ antialias: true, alpha: false }} style={{ height: '100vh', width: '100vw' }}>
-        <PerspectiveCamera makeDefault position={[15, 30, 45]} fov={40} />
-        <OrbitControls enablePan={false} maxPolarAngle={Math.PI / 2.1} minPolarAngle={Math.PI / 10} makeDefault />
+    <div className="absolute inset-0 w-full h-full z-0 pointer-events-auto bg-[#000408]">
+      <Canvas shadows gl={{ antialias: true, alpha: false, stencil: false, depth: true }} dpr={[1, 2]}>
+        <PerspectiveCamera makeDefault position={[40, 50, 80]} fov={35} />
+        <OrbitControls enablePan={true} maxPolarAngle={Math.PI / 2.2} minPolarAngle={Math.PI / 10} />
         
-        <color attach="background" args={['#000308']} />
-        <ambientLight intensity={0.4} />
-        <pointLight position={[20, 30, 20]} intensity={3} color="#0ea5e9" />
+        <color attach="background" args={['#00050a']} />
         
-        <Stars radius={100} depth={50} count={10000} factor={6} fade speed={2} />
+        {/* Dynamic Studio Lighting */}
+        <ambientLight intensity={0.2} />
+        <spotLight position={[50, 100, 50]} angle={0.3} penumbra={1} intensity={5} color="#0ea5e9" castShadow />
+        <spotLight position={[-50, 100, -50]} angle={0.3} penumbra={1} intensity={3} color="#10b981" />
+        <rectAreaLight width={50} height={50} position={[0, 50, 0]} intensity={2} color="#ffffff" />
+
+        {/* Space Elements */}
+        <Stars radius={200} depth={50} count={10000} factor={4} fade speed={1} />
+        <gridHelper args={[300, 50, '#ffffff05', '#ffffff05']} position={[0, -0.1, 0]} />
+
+        {/* Global Blueprint Grid Floor */}
+        <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
+           <planeGeometry args={[500, 500]} />
+           <meshPhongMaterial color="#000000" transparent opacity={0.2} />
+        </mesh>
+
+        {/* Primary Actors */}
+        <ClientBase position={[-35, 0, 15]} files={clientFiles} active={ftpState !== FTP_STATES.DISCONNECTED} />
+        <ServerMonolith position={[35, 0, -15]} files={serverFiles} active={ftpState === FTP_STATES.LOGGED_IN} />
+
+        {/* The Connection Channels */}
+        <FTPLinkPipe p1={[-30, 1, 15]} p2={[30, 12, -15]} color="#0ea5e9" label="CONTROL CHANNEL (Port 21)" />
+        <FTPLinkPipe p1={[-30, 1, 15]} p2={[30, 2, -15]} color="#10b981" label="DATA CHANNEL (Port 20)" offset={-8} />
         
-        <gridHelper args={[200, 40, '#0ea5e90a', '#0ea5e905']} position={[0, -0.1, 0]} />
+        {/* Interactive Center HUD (Status) */}
+        <group position={[0, 25, 0]}>
+           <Html center transform distanceFactor={12}>
+              <div className="w-[480px] p-8 bg-black/60 border border-white/10 tech-panel backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
+                 <div className="flex justify-between items-start mb-6">
+                    <div>
+                       <h2 className="text-[24px] font-black italic uppercase tracking-tighter text-white">SYSTEM_STATE</h2>
+                       <div className="flex items-center gap-2 mt-1">
+                          <div className={`w-2 h-2 rounded-full animate-pulse ${ftpState === FTP_STATES.LOGGED_IN ? 'bg-emerald-500' : 'bg-sky-500'}`} />
+                          <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest">{ftpState}</span>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <span className="text-[10px] font-mono text-white/30 uppercase block">TX_SPEED</span>
+                       <span className="text-[18px] font-black italic text-emerald-400">25.4 MB/S</span>
+                    </div>
+                 </div>
+                 
+                 <div className="flex gap-4">
+                    {ftpState === FTP_STATES.DISCONNECTED ? (
+                       <button onClick={onStart} className="flex-1 py-4 bg-sky-500 text-black font-black uppercase tracking-[0.3em] rounded-xl shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:bg-sky-400 transition-all">INITIALIZE_CONNECTION</button>
+                    ) : (
+                       <button onClick={() => onCommand('LIST')} className="flex-1 py-4 bg-emerald-500 text-black font-black uppercase tracking-[0.3em] rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition-all">SYNC_DIRECTORY_MAP</button>
+                    )}
+                 </div>
+              </div>
+           </Html>
+        </group>
 
-        {/* The "Main" Models */}
-        <TechTower 
-          position={[-18, 0, 10]} 
-          color="#38bdf8" 
-          label="CLIENT_GATEWAY_V4" 
-          active={ftpState !== FTP_STATES.DISCONNECTED} 
-          onAction={ftpState === FTP_STATES.DISCONNECTED ? onStart : null}
-          actionLabel="EXE: HANDSHAKE"
-        />
-
-        <TechTower 
-          position={[18, 0, -10]} 
-          color="#10b981" 
-          label="REMOTE_MAINFRAME" 
-          active={ftpState === FTP_STATES.LOGGED_IN} 
-        />
-
-        {/* Data Shards for live files */}
-        {clientFiles.slice(0, 10).map((f, i) => (
-           <DataShard key={f.name} position={[-25, 2 + i * 1.5, 10]} label={f.name} color="#38bdf8" />
-        ))}
-
-        <NetworkTube p1={[-18, 0, 10]} p2={[18, 0, -10]} color="#38bdf8" />
-        <PacketFlow p1={[-18, 0, 10]} p2={[18, 0, -10]} packets={packets} />
-
-        <Environment preset="night" />
+        {/* Global FX */}
+        <Environment preset="city" />
       </Canvas>
     </div>
   );
