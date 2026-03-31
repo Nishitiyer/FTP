@@ -86,65 +86,48 @@ const App = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full relative overflow-hidden text-sky-100 font-sans">
-      {/* 3D Cinematic Layer (The Core) */}
-      <Scene ftpState={ftpState} packets={packets} activeTransfer={activeTransfer} />
-
-      {/* Holographic Header UI */}
-      <header className="p-8 flex justify-between items-start z-50 pointer-events-none relative">
-        <div className="pointer-events-auto">
-           <div className="flex items-center gap-4 group">
-             <div className="p-3 hologram-panel border-[#0ea5e9]/40 rounded-xl relative overflow-hidden group-hover:scale-110 transition-transform cursor-pointer">
-                <Layers className="text-[#0ea5e9]" size={28} />
-                <div className="absolute inset-0 bg-[#0ea5e9]/5 animate-pulse" />
-             </div>
-             <div>
-                <h1 className="text-3xl font-black uppercase tracking-[0.2em] text-[#0ea5e9] drop-shadow-[0_0_15px_rgba(14,165,233,0.5)]">NexusFTP // V4</h1>
-                <div className="flex items-center gap-2 mt-1 text-[8px] font-black tracking-[0.5em] text-[#0ea5e9]/40">
-                   <ShieldCheck size={10} /> 
-                   <span>Secure Protocol // Alchemist Alpha</span>
-                </div>
-             </div>
-           </div>
-        </div>
-
-        <div className="flex items-center gap-10 opacity-60 pointer-events-auto">
-           <div className="flex items-center gap-2 px-6 py-3 hologram-panel">
-              <Activity size={16} className="text-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Sync: ON</span>
-           </div>
-           <button className="hologram-panel p-3 border-[#0ea5e9]/20 hover:border-[#0ea5e9]/80 transition-all group">
-              <Settings size={20} className="text-[#0ea5e9] group-rotate-90" />
-           </button>
-        </div>
-      </header>
-
-      {/* Side HUD Panels - Structured Sidebar */}
-      <div className="absolute left-0 top-0 bottom-0 w-[400px] pointer-events-none flex flex-col p-8 pt-32 z-10 bg-gradient-to-r from-[#020617] via-[#020617]/90 to-transparent border-r border-[#0ea5e9]/20 overflow-y-auto">
+    <div className="flex w-full h-screen bg-[#020617] text-sky-100 font-sans overflow-hidden">
+      
+      {/* Left: 2D Dashboard Interface */}
+      <div className="w-[45%] h-full flex flex-col p-8 gap-6 overflow-y-auto border-r border-[#0ea5e9]/20 bg-gradient-to-br from-[#020a12] to-[#020617]">
          
-         {/* System Controls */}
-         <section className="pointer-events-auto flex flex-col gap-4 mb-6 relative">
-            <div className="absolute -inset-1 bg-emerald-500/10 blur-xl rounded-full" />
-            <div className="hologram-panel p-4 flex flex-col gap-3 relative z-10">
-               <h3 className="text-[10px] font-black uppercase tracking-widest text-[#0ea5e9]/80 border-b border-[#0ea5e9]/20 pb-2">Transmission Link</h3>
+         {/* Simple Header */}
+         <header className="flex items-center gap-4 mb-2">
+            <Layers className="text-[#0ea5e9]" size={36} />
+            <div>
+               <h1 className="text-3xl font-black uppercase tracking-[0.2em] text-[#0ea5e9] drop-shadow-[0_0_15px_rgba(14,165,233,0.5)]">NexusFTP // V4</h1>
+               <div className="flex items-center gap-2 mt-1 text-[8px] font-black tracking-[0.5em] text-[#0ea5e9]/60">
+                  <ShieldCheck size={10} /> 
+                  <span>Secure Protocol // Active</span>
+               </div>
+            </div>
+         </header>
+
+         {/* Transmission Controls */}
+         <section className="flex flex-col gap-4 relative">
+            <div className="hologram-panel p-6 flex flex-col gap-4">
+               <div className="flex justify-between items-center border-b border-[#0ea5e9]/20 pb-3">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[#0ea5e9]">Connection Link</h3>
+                  <Activity size={16} className={ftpState !== FTP_STATES.DISCONNECTED ? "text-emerald-500 animate-pulse" : "text-slate-600"} />
+               </div>
                {ftpState === FTP_STATES.DISCONNECTED ? (
-                  <button onClick={startSession} className="tech-button">Initialize Connection_</button>
+                  <button onClick={startSession} className="tech-button py-3">Initialize Connection_</button>
                ) : (
                   <AnimatePresence mode="popLayout">
                     {ftpState === FTP_STATES.CONNECTING ? (
                         <motion.button 
                           key="btn-user" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                          onClick={() => handleCommand('USER', ['admin'])} className="tech-button tech-button-blue"
+                          onClick={() => handleCommand('USER', ['admin'])} className="tech-button tech-button-blue py-3"
                         >IDENT_PROTOCOL: USER admin</motion.button>
                     ) : ftpState === FTP_STATES.USER_ACK ? (
                         <motion.button 
                           key="btn-pass" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                          onClick={() => handleCommand('PASS', ['password123'])} className="tech-button"
+                          onClick={() => handleCommand('PASS', ['password123'])} className="tech-button py-3"
                         >AUTH_ACCESS: PASS *****</motion.button>
                     ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => handleCommand('LIST')} className="tech-button tech-button-blue">Query Server</button>
-                          <button onClick={() => handleCommand('QUIT')} className="tech-button tech-button-red">Eject</button>
+                        <div className="grid grid-cols-2 gap-4">
+                          <button onClick={() => handleCommand('LIST')} className="tech-button tech-button-blue py-3">Query Remote Directory</button>
+                          <button onClick={() => handleCommand('QUIT')} className="tech-button tech-button-red py-3">Eject Session</button>
                         </div>
                     )}
                   </AnimatePresence>
@@ -152,37 +135,37 @@ const App = () => {
             </div>
          </section>
 
-         {/* File System HUD */}
-         <section className="flex-1 flex flex-col gap-4 min-h-[400px] pointer-events-auto mt-4">
-            <div className="flex-1 flex flex-col overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
+         {/* File Explorers (Side by Side) */}
+         <section className="flex gap-6 min-h-[300px]">
+            <div className="flex-1 flex flex-col">
                <FileExplorer files={clientFiles} title="Local Vault" active={true} />
             </div>
-            {ftpState === FTP_STATES.LOGGED_IN && (
-              <div className="flex-1 flex flex-col overflow-hidden opacity-90 hover:opacity-100 transition-opacity mt-4">
-                 <FileExplorer 
-                    files={serverFiles} title="Remote Core" active={ftpState === FTP_STATES.LOGGED_IN}
-                    onFileClick={(file) => { if (ftpState === FTP_STATES.LOGGED_IN) handleCommand('RETR', [file.name]); }}
-                 />
-              </div>
-            )}
+            <div className="flex-1 flex flex-col">
+               <FileExplorer 
+                  files={serverFiles} title="Remote Core" active={ftpState === FTP_STATES.LOGGED_IN}
+                  onFileClick={(file) => { if (ftpState === FTP_STATES.LOGGED_IN) handleCommand('RETR', [file.name]); }}
+               />
+            </div>
          </section>
 
-         {/* System Console (Mini) */}
-         <section className="h-48 mt-8 pointer-events-auto opacity-70 hover:opacity-100 transition-opacity hologram-panel flex flex-col">
+         {/* Terminal Log */}
+         <section className="flex-1 min-h-[200px] mt-2">
             <Terminal logs={logs} />
          </section>
+
       </div>
 
-      {/* Transfer Progress handled in 3D Scene */}
+      {/* Right: 3D Hologram Window */}
+      <div className="w-[55%] h-full p-8 flex flex-col relative bg-[#020617]">
+         {/* Decorative Border Wrapper */}
+         <div className="w-full h-full relative tech-panel p-1 border-emerald-500/30 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.05)] overflow-hidden">
+            <Scene ftpState={ftpState} packets={packets} activeTransfer={activeTransfer} />
+         </div>
 
-      {/* Corner Metadata Decorators */}
-      <div className="absolute top-8 left-8 flex flex-col gap-1 opacity-20 pointer-events-none">
-         <div className="flex items-center gap-2 text-[8px] font-black text-sky-400 uppercase tracking-[0.4em]"><Cpu size={12} /> Neural Core I9</div>
-         <div className="h-[2px] w-32 bg-sky-500/20" />
+         {/* Decorative Scanlines */}
+         <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] z-50" />
       </div>
-      
-      {/* Decorative Scanlines Mask */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] z-[1001]" />
+
     </div>
   );
 };
