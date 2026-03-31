@@ -161,11 +161,12 @@ const NetworkChannels = ({ p1, p2, packets }) => {
          </div>
       </Html>
 
-      {/* Data Packets traversing the green data channel */}
+      {/* Network Packets Traversing Channels Live Based on Input */}
       {packets.map((p) => {
-         // Use the data channel path if type is data
          if (p.type === 'data') {
-           return <DataPacket key={p.id} pathPoints={dataPoints} dir={p.dir} label={p.label} />
+           return <DataPacket key={p.id} pathPoints={dataPoints} dir={p.dir} label={p.label} baseColor="#10b981" />
+         } else if (p.type === 'control') {
+           return <DataPacket key={p.id} pathPoints={controlPoints} dir={p.dir} label={p.label} baseColor="#eab308" />
          }
          return null;
       })}
@@ -173,7 +174,7 @@ const NetworkChannels = ({ p1, p2, packets }) => {
   );
 };
 
-const DataPacket = ({ pathPoints, dir, label }) => {
+const DataPacket = ({ pathPoints, dir, label, baseColor }) => {
   const mesh = useRef();
   const progress = useRef(dir === 'c2s' ? 0 : 1);
 
@@ -196,11 +197,11 @@ const DataPacket = ({ pathPoints, dir, label }) => {
   return (
     <group ref={mesh}>
       <Box args={[0.5, 0.5, 0.5]}>
-         <meshBasicMaterial color="#34d399" transparent opacity={0.8} />
-         <Edges color="#a7f3d0" />
+         <meshBasicMaterial color={baseColor} transparent opacity={0.8} />
+         <Edges color={baseColor} />
       </Box>
       <Html className="pointer-events-none" distanceFactor={4}>
-         <div className="px-1 py-0.5 bg-emerald-900/60 border border-emerald-400/50 text-[6px] font-mono text-emerald-100 rounded">
+         <div className="px-1.5 py-0.5 bg-black/80 backdrop-blur-sm border border-white/20 text-[6px] font-mono text-white rounded whitespace-nowrap" style={{ borderColor: baseColor }}>
             {label}
          </div>
       </Html>
