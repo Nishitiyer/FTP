@@ -49,7 +49,7 @@ const ClientDevice = ({ position, active, files }) => {
   }, [files]);
 
   return (
-    <group position={position}>
+    <group position={position} scale={1.4}>
       {/* High-Tech Pad Base */}
       <Box args={[4.5, 0.5, 4.5]} position={[0, -0.25, 0]}>
         <meshStandardMaterial color="#020a12" roughness={0.1} metalness={0.9} />
@@ -61,59 +61,21 @@ const ClientDevice = ({ position, active, files }) => {
       </Box>
       <gridHelper args={[4, 10, '#0ea5e9', '#020617']} position={[0, 0.41, 0]} />
 
-      {/* Center glowing core */}
-      <Cylinder args={[1, 1, 0.1, 32]} position={[0, 0.45, 0]}>
-         <meshBasicMaterial color="#0ea5e9" transparent opacity={0.5} />
-         <pointLight color="#0ea5e9" intensity={2} distance={8} />
-      </Cylinder>
-
-      {/* Floating Refractive Cubes representing Actual Files */}
-      {files.map((file, i) => (
-        <Float 
-          key={file.name + i} 
-          speed={1.5 + Math.random()} 
-          rotationIntensity={0.5} 
-          floatIntensity={0.5} 
-          position={[
-            (i % 3 - 1) * 1.2, 
-            2 + Math.floor(i / 3) * 1.2, 
-            (Math.floor(i / 3) % 2 === 0 ? 0.5 : -0.5)
-          ]}
-        >
-           <Box args={[0.8, 0.8, 0.8]}>
-             <meshPhysicalMaterial 
-               color={file.type === 'dir' ? "#38bdf8" : "#818cf8"} 
-               transmission={0.9} 
-               opacity={1} 
-               transparent 
-               roughness={0.1} 
-               thickness={0.5} 
-               clearcoat={1} 
-               emissive={file.type === 'dir' ? "#0ea5e9" : "#6366f1"} 
-               emissiveIntensity={0.2}
-             />
-             <Edges color={file.type === 'dir' ? "#bae6fd" : "#c7d2fe"} />
-             <Html position={[0, 0.6, 0]} center transform distanceFactor={5}>
-               <div className="px-1.5 py-0.5 bg-black/60 border border-white/20 text-[5px] font-bold text-white rounded whitespace-nowrap">
-                  {file.name}
-               </div>
-             </Html>
-           </Box>
-        </Float>
-      ))}
-
-      {/* UI Overlay */}
-      <Html position={[-3, 6, 0]} transform distanceFactor={7} rotation={[0, Math.PI/6, 0]}>
-         <UIPanel 
-           title="CLIENT_VAULT" 
-           subtitle={`TOTAL_OBJECTS: ${files.length} // STATUS: ACTIVE`}
-           glowingColor="#0ea5e9"
-           items={fileItems.length > 0 ? fileItems : [{ label: 'VAULT_EMPTY', icon: '⚠️' }]}
-         />
+      {/* Node Logic Label */}
+      <Html position={[0, 6, 0]} center transform>
+        <div className="flex flex-col items-center">
+           <span className="text-[14px] font-black tracking-[0.5em] text-[#38bdf8] drop-shadow-[0_0_10px_#38bdf8]">CLIENT_ORIGIN</span>
+           <span className="text-[6px] text-white/40 uppercase mt-1">TCP Control Persistence: {active ? "ACTIVE" : "OFFLINE"}</span>
+        </div>
       </Html>
-    </group>
-  );
-};
+
+      {/* Protocol Explanation HUD */}
+      <Html position={[-5, 3, 0]} transform distanceFactor={8}>
+         <div className="cyber-panel p-3 bg-black/80 border-sky-400/30 w-[200px]">
+            <span className="text-[8px] font-black text-sky-400 tracking-widest block mb-1">PROTO_ROLE: CONTROL_COMMANDER</span>
+            <p className="text-[7px] text-white/60 leading-tight">Initiates the Telnet-based Control Connection on Port 21. It sends textual commands (USER, PASS, LIST) to modulate the remote server state.</p>
+         </div>
+      </Html>
 
 const ServerDevice = ({ position, active, files }) => {
   const fileItems = useMemo(() => {
@@ -121,51 +83,28 @@ const ServerDevice = ({ position, active, files }) => {
   }, [files]);
 
   return (
-    <group position={position}>
+    <group position={position} scale={1.4}>
       {/* Massive Server Tower */}
       <Box args={[4, 9, 4]} position={[0, 4.5, 0]}>
         <meshPhysicalMaterial color="#020a12" roughness={0.2} metalness={0.9} clearcoat={0.5} />
         <Edges color="#10b981" opacity={0.3} />
       </Box>
       
-      {/* Structural Ribs */}
-      {[2, 4, 6, 8].map(y => (
-        <Box key={y} args={[4.2, 0.2, 4.2]} position={[0, y, 0]}>
-           <meshStandardMaterial color="#064e3b" metalness={0.8} roughness={0.3} />
-           <Edges color="#34d399" opacity={0.5} />
-        </Box>
-      ))}
-
-      {/* Massive Glowing Green Laser Core Matrix */}
-      <Box args={[3.2, 6, 3.2]} position={[0, 4.5, 0]}>
-         <meshBasicMaterial color="#000000" />
-      </Box>
-      
-      <Box args={[1.5, 7, 1.5]} position={[0, 4.5, 0]}>
-         <meshPhysicalMaterial color="#10b981" transmission={0.9} opacity={1} transparent roughness={0.1} emissive="#10b981" emissiveIntensity={active ? 2 : 0.5}/>
-         {active && <pointLight color="#10b981" intensity={5} distance={20} />}
-      </Box>
-
-      {/* Detailed Front Panel Data Slots - Static logic changed to reflect server activity */}
-      {[2.5, 3.5, 4.5, 5.5, 6.5, 7.5].map((y, i) => (
-        <mesh key={i} position={[0, y, 2.05]}>
-          <boxGeometry args={[2.5, 0.4, 0.1]} />
-          <meshBasicMaterial color={(active && i < files.length) ? "#34d399" : "#022c22"} />
-        </mesh>
-      ))}
-
-      {/* Server UI Overlay */}
-      <Html position={[3.5, 6, 0]} transform distanceFactor={7} rotation={[0, -Math.PI/6, 0]}>
-         <UIPanel 
-           title="REMOTE_CORE" 
-           subtitle={active ? "LINK_READY // 192.168.1.100" : "LINK_OFFLINE // NO_HANDSHAKE"}
-           glowingColor="#10b981"
-           items={active ? (fileItems.length > 0 ? fileItems : [{ label: 'DIRECTORY_EMPTY', icon: '❓' }]) : [{ label: 'WAITING_FOR_AUTH', icon: '🔐' }]}
-         />
+      {/* Logic Hub Label */}
+      <Html position={[0, 10, 0]} center transform>
+        <div className="flex flex-col items-center">
+           <span className="text-[14px] font-black tracking-[0.5em] text-[#10b981] drop-shadow-[0_0_10px_#10b981]">REMOTE_NODE_A1</span>
+           <span className="text-[6px] text-white/40 uppercase mt-1">Status: {active ? "Data_Link_Established" : "Awaiting_Handshake"}</span>
+        </div>
       </Html>
-    </group>
-  );
-};
+
+      {/* FTP Explanation HUD */}
+      <Html position={[5, 5, 0]} transform distanceFactor={8}>
+         <div className="cyber-panel p-3 bg-black/80 border-[#10b981]/30 w-[200px]">
+            <span className="text-[8px] font-black text-[#10b981] tracking-widest block mb-1">PROTO_ROLE: DATA_SOURCE</span>
+            <p className="text-[7px] text-white/60 leading-tight">This node manages the passive/active data ports. It listens for PORT/PASV commands to bind binary streams.</p>
+         </div>
+      </Html>
 
 const BackupServer = ({ position }) => (
   <group position={position}>
@@ -461,8 +400,12 @@ const NetworkTopology = ({ p1, p2, pBackup, pSecure, packets, activeTransfer }) 
 export const Scene = ({ ftpState, packets, activeTransfer, clientFiles, serverFiles }) => {
   return (
     <div className="absolute inset-0 w-full h-full z-0 pointer-events-auto">
-      <Canvas shadows gl={{ antialias: true, alpha: false, logarithmicDepthBuffer: true }}>
-        <PerspectiveCamera makeDefault position={[2, 12, 18]} fov={55} />
+      <Canvas 
+         shadows 
+         gl={{ antialias: true, alpha: false, logarithmicDepthBuffer: true }}
+         style={{ height: '100vh', width: '100vw' }}
+      >
+        <PerspectiveCamera makeDefault position={[5, 15, 25]} fov={50} />
         <OrbitControls 
           enablePan={false} 
           enableZoom={true} 
