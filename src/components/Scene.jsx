@@ -252,9 +252,9 @@ export const Scene = ({ ftpState, packets, activeTransfer }) => {
           packets={packets} 
         />
 
-        {/* Central Status Hologram */}
-        <Html position={[0, 7, 0]} center transform distanceFactor={6}>
-           <div className="tech-panel w-72 p-4 text-center">
+        {/* Central Status Hologram Repositioned */}
+        <Html position={[0, 9.5, -6]} center transform distanceFactor={9}>
+           <div className="tech-panel w-72 p-4 text-center border-emerald-500/50">
              <div className="text-xl font-black uppercase tracking-[0.2em] tech-text-cyan border-b border-cyan-500/30 pb-2 mb-2">
                 STATUS
              </div>
