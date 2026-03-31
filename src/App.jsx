@@ -15,6 +15,42 @@ import {
   Layers
 } from 'lucide-react';
 
+const ProtocolExplanation = ({ state }) => {
+  const content = {
+    [FTP_STATES.DISCONNECTED]: {
+      title: "Step 1: Establishment (Port 21)",
+      body: "FTP uses a dual-port architecture. Before transferring files, the client must establish an initial TCP Control Connection with the server on Port 21 to send commands."
+    },
+    [FTP_STATES.CONNECTING]: {
+      title: "Step 2: Identification",
+      body: "The server accepted the TCP connection (220 Ready_ENCRYPTION_ACTIVE). Standard FTP requires the client to identify itself using the USER command before any file actions."
+    },
+    [FTP_STATES.USER_ACK]: {
+      title: "Step 3: Authentication",
+      body: "The server responded with 331 (User name okay, need password). The client must now explicitly send the PASS command securely over the control channel."
+    },
+    [FTP_STATES.LOGGED_IN]: {
+      title: "Step 4: Data Channel (Port 20)",
+      body: "Authentication successful (230 Logged in). To list directories or download files, standard FTP dynamically opens a completely separate DATA CHANNEL (Port 20) to stream raw bytes."
+    }
+  };
+
+  const info = content[state] || content[FTP_STATES.DISCONNECTED];
+
+  return (
+    <motion.div 
+      key={info.title}
+      initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-sky-500/5 border border-sky-400/20 rounded p-4 mb-2"
+    >
+      <h4 className="font-bold text-[#0ea5e9] uppercase tracking-widest mb-1.5 text-[10px] items-center flex gap-2">
+        <Zap size={10} className="text-[#0ea5e9]" /> {info.title}
+      </h4>
+      <p className="text-sky-100/70 leading-relaxed text-[10px] italic">{info.body}</p>
+    </motion.div>
+  );
+};
+
 const App = () => {
   const [ftpState, setFtpState] = useState(FTP_STATES.DISCONNECTED);
   const [logs, setLogs] = useState([]);
@@ -57,7 +93,7 @@ const App = () => {
     // Handle special actions
     if (result.code === 150) {
       if (cmd === 'LIST') {
-        sendPacket('data', 'NET_STREAM_LIST', 's2c');
+        sendPacket('data', 'NET_STREAM_LIST (Port 20)', 's2c');
         await new Promise(r => setTimeout(r, 1200));
         setServerFiles(result.data);
         addLog('resp', '226 // TRANSFER_COMPLETE // ALL_FILES_SYNCED');
@@ -65,7 +101,7 @@ const App = () => {
       } else if (cmd === 'RETR') {
         const file = result.file;
         setActiveTransfer({ name: file.name, progress: 0, dir: 'download' });
-        sendPacket('data', `RETR_STREAM_${file.name}`, 's2c');
+        sendPacket('data', `RETR_STREAM_${file.name} (Port 20)`, 's2c');
         
         for (let i = 0; i <= 100; i += 10) {
           setActiveTransfer(prev => ({ ...prev, progress: i }));
@@ -86,10 +122,10 @@ const App = () => {
   };
 
   return (
-    <div className="flex w-full h-screen bg-[#020617] text-sky-100 font-sans overflow-hidden">
+    <div className="grid grid-cols-12 w-full h-screen bg-[#020617] text-sky-100 font-sans overflow-hidden">
       
       {/* Left: 2D Dashboard Interface */}
-      <div className="w-[45%] h-full flex flex-col p-8 gap-6 overflow-y-auto border-r border-[#0ea5e9]/20 bg-gradient-to-br from-[#020a12] to-[#020617]">
+      <div className="col-span-5 h-full flex flex-col p-8 gap-6 overflow-y-auto border-r border-[#0ea5e9]/20 bg-gradient-to-br from-[#020a12] to-[#020617]">
          
          {/* Simple Header */}
          <header className="flex items-center gap-4 mb-2">
@@ -106,28 +142,33 @@ const App = () => {
          {/* Transmission Controls */}
          <section className="flex flex-col gap-4 relative">
             <div className="hologram-panel p-6 flex flex-col gap-4">
-               <div className="flex justify-between items-center border-b border-[#0ea5e9]/20 pb-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-[#0ea5e9]">Connection Link</h3>
+               <div className="flex justify-between items-center border-b border-[#0ea5e9]/20 pb-3 mb-2">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[#0ea5e9]">FTP Protocol Lifecycle Console</h3>
                   <Activity size={16} className={ftpState !== FTP_STATES.DISCONNECTED ? "text-emerald-500 animate-pulse" : "text-slate-600"} />
                </div>
+               
+               <AnimatePresence mode="wait">
+                 <ProtocolExplanation state={ftpState} />
+               </AnimatePresence>
+
                {ftpState === FTP_STATES.DISCONNECTED ? (
-                  <button onClick={startSession} className="tech-button py-3">Initialize Connection_</button>
+                  <button onClick={startSession} className="tech-button py-3 text-[10px]">Establish TCP Control Connection (Port 21)</button>
                ) : (
                   <AnimatePresence mode="popLayout">
                     {ftpState === FTP_STATES.CONNECTING ? (
                         <motion.button 
                           key="btn-user" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                          onClick={() => handleCommand('USER', ['admin'])} className="tech-button tech-button-blue py-3"
-                        >IDENT_PROTOCOL: USER admin</motion.button>
+                          onClick={() => handleCommand('USER', ['admin'])} className="tech-button tech-button-blue py-3 text-[10px]"
+                        >Send Identity: USER admin</motion.button>
                     ) : ftpState === FTP_STATES.USER_ACK ? (
                         <motion.button 
                           key="btn-pass" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                          onClick={() => handleCommand('PASS', ['password123'])} className="tech-button py-3"
-                        >AUTH_ACCESS: PASS *****</motion.button>
+                          onClick={() => handleCommand('PASS', ['password123'])} className="tech-button py-3 text-[10px]"
+                        >Send Credential: PASS password123</motion.button>
                     ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                          <button onClick={() => handleCommand('LIST')} className="tech-button tech-button-blue py-3">Query Remote Directory</button>
-                          <button onClick={() => handleCommand('QUIT')} className="tech-button tech-button-red py-3">Eject Session</button>
+                        <div className="flex flex-col gap-2">
+                          <button onClick={() => handleCommand('LIST')} className="tech-button tech-button-blue py-3 text-[10px]">Open Port 20 & Query LIST</button>
+                          <button onClick={() => handleCommand('QUIT')} className="tech-button tech-button-red py-3 text-[10px]">Eject Session (QUIT)</button>
                         </div>
                     )}
                   </AnimatePresence>
@@ -136,7 +177,7 @@ const App = () => {
          </section>
 
          {/* File Explorers (Side by Side) */}
-         <section className="flex gap-6 min-h-[300px]">
+         <section className="flex flex-col xl:flex-row gap-6 min-h-[300px]">
             <div className="flex-1 flex flex-col">
                <FileExplorer files={clientFiles} title="Local Vault" active={true} />
             </div>
@@ -156,7 +197,7 @@ const App = () => {
       </div>
 
       {/* Right: 3D Hologram Window */}
-      <div className="w-[55%] h-full p-8 flex flex-col relative bg-[#020617]">
+      <div className="col-span-7 h-full p-8 flex flex-col relative bg-[#020617]">
          {/* Decorative Border Wrapper */}
          <div className="w-full h-full relative tech-panel p-1 border-emerald-500/30 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.05)] overflow-hidden">
             <Scene ftpState={ftpState} packets={packets} activeTransfer={activeTransfer} />

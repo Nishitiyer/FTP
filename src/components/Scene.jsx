@@ -119,49 +119,152 @@ const ServerDevice = ({ position, active }) => {
   );
 };
 
-const NetworkChannels = ({ p1, p2, packets }) => {
-  // Control Channel: Arc (Yellow)
+const BackupServer = ({ position }) => (
+  <group position={position}>
+    <Box args={[2, 4, 2]} position={[0, 2, 0]}>
+      <meshStandardMaterial color="#2a0a10" roughness={0.3} metalness={0.9} />
+      <Edges color="#ef4444" opacity={0.6} transparent />
+    </Box>
+    <Cylinder args={[0.5, 0.5, 0.2, 16]} position={[0, 2.5, 1.1]} rotation={[Math.PI/2, 0, 0]}>
+       <meshBasicMaterial color="#ef4444" />
+       <pointLight color="#ef4444" intensity={1.5} distance={5} />
+    </Cylinder>
+    <Html position={[0, 5, 0]} transform distanceFactor={6}>
+      <div className="text-[6px] font-black uppercase tracking-[0.2em] text-red-500 text-glow whitespace-nowrap text-center">
+        BACKUP SERVER<br/><span className="text-red-300/60 text-[5px]">SERVER: 192.168.1.110</span>
+      </div>
+    </Html>
+  </group>
+);
+
+const SecureServer = ({ position }) => (
+  <group position={position}>
+    {/* Obelisk Shape */}
+    <Cylinder args={[0.2, 1.5, 5, 6]} position={[0, 2.5, 0]}>
+      <meshPhysicalMaterial color="#0a0a0a" metalness={1} roughness={0.05} clearcoat={1} clearcoatRoughness={0.1} />
+      <Edges color="#eab308" opacity={0.5} transparent />
+    </Cylinder>
+    {/* Glowing Base */}
+    <Box args={[2, 0.2, 2]} position={[0, 0, 0]}>
+      <meshBasicMaterial color="#06b6d4" />
+    </Box>
+    <Html position={[0, -0.5, 0]} transform distanceFactor={6} center>
+      <div className="text-[6px] font-black uppercase tracking-[0.2em] text-cyan-400 text-glow whitespace-nowrap text-center">
+        SECURE SERVER
+      </div>
+    </Html>
+  </group>
+);
+
+const BackgroundPacket = ({ pathPoints, baseColor, speedMultiplier = 1 }) => {
+  const mesh = useRef();
+  const progress = useRef(Math.random());
+
+  useFrame((state, delta) => {
+    progress.current = (progress.current + (0.2 * delta * speedMultiplier)) % 1;
+    const index = Math.floor(progress.current * (pathPoints.length - 1));
+    if (mesh.current && pathPoints[index]) {
+      mesh.current.position.copy(pathPoints[index]);
+      mesh.current.rotation.x += 0.05;
+      mesh.current.rotation.y += 0.05;
+    }
+  });
+
+  return (
+    <mesh ref={mesh}>
+      <boxGeometry args={[0.3, 0.3, 0.3]} />
+      <meshBasicMaterial color={baseColor} transparent opacity={0.6} />
+      <Edges color={baseColor} />
+    </mesh>
+  );
+};
+
+const NetworkChannels = ({ p1, p2, pBackup, pSecure, packets }) => {
+  // 1. Control Channel: Arc to Remote Server (Port 21) - Yellow
   const controlPoints = useMemo(() => {
     const curve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(...p1).add(new THREE.Vector3(0, 1.5, 0)),
-      new THREE.Vector3(0, 5, 0), // Highest point of the arc
-      new THREE.Vector3(...p2).add(new THREE.Vector3(0, 3, 0))
+      new THREE.Vector3(0, 5, 0),
+      new THREE.Vector3(...p2).add(new THREE.Vector3(-1, 3, 0))
     );
     return curve.getPoints(50);
   }, [p1, p2]);
 
-  // Data Channel: Direct somewhat wobbly/straight Path (Green)
+  // 2. Data Channel: Direct tube to Remote Server (Port 20) - Green
   const dataPoints = useMemo(() => {
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(...p1).add(new THREE.Vector3(1.5, 1, 0)),
-      new THREE.Vector3(-2, 1.2, 0),
-      new THREE.Vector3(2, 2.8, 0),
-      new THREE.Vector3(...p2).add(new THREE.Vector3(-0.5, 3, 1.7)) // Into the port
+      new THREE.Vector3(-2, 1.2, 1),
+      new THREE.Vector3(2, 2.5, 1),
+      new THREE.Vector3(...p2).add(new THREE.Vector3(-1, 3, 1.7))
     ]);
     return curve.getPoints(50);
   }, [p1, p2]);
 
+  // 3. Backup Channel (Port 2022) - Orange/Red
+  const backupPoints = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(...p1).add(new THREE.Vector3(-1.5, 0.5, -1)),
+      new THREE.Vector3(-5, 1, -4),
+      new THREE.Vector3(...pBackup).add(new THREE.Vector3(0, 2.5, 1.1))
+    ]);
+    return curve.getPoints(50);
+  }, [p1, pBackup]);
+
+  // 4. Secure Channel (Port 2222) - Cyan
+  const securePoints = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(...p1).add(new THREE.Vector3(1.5, 0.5, 2)),
+      new THREE.Vector3(2, 0.5, 4),
+      new THREE.Vector3(...pSecure).add(new THREE.Vector3(-1.5, 0.5, 0))
+    ]);
+    return curve.getPoints(50);
+  }, [p1, pSecure]);
+
   return (
     <group>
-      {/* Control Channel */}
+      {/* 1. Control Channel */}
       <Line points={controlPoints} color="#eab308" lineWidth={3} transparent opacity={0.6} />
       <Line points={controlPoints} color="#fef08a" lineWidth={1} transparent opacity={0.9} />
-      <Html position={[0, 4, 0]} transform distanceFactor={5}>
-         <div className="text-[8px] font-black uppercase tracking-[0.2em] text-yellow-400 text-glow whitespace-nowrap">
-           <span className="text-yellow-200">FTP LINK</span><br/>CONTROL CHANNEL (Port 21)
+      <Html position={[-1, 4, 0]} transform distanceFactor={5}>
+         <div className="text-[7px] font-black uppercase tracking-[0.2em] text-yellow-400 text-glow whitespace-nowrap text-right">
+           <span className="text-yellow-200 font-bold">FTP LINK</span><br/>CONTROL CHANNEL (Port 21)
          </div>
       </Html>
 
-      {/* Data Channel */}
-      <Line points={dataPoints} color="#10b981" lineWidth={8} transparent opacity={0.3} />
+      {/* 2. Data Channel */}
+      <Line points={dataPoints} color="#10b981" lineWidth={8} transparent opacity={0.2} />
       <Line points={dataPoints} color="#34d399" lineWidth={2} transparent opacity={0.8} />
-      <Html position={[0, 1.5, 0]} transform distanceFactor={5}>
-         <div className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-400 text-glow whitespace-nowrap">
+      <Html position={[1, 1.8, 1]} transform distanceFactor={5}>
+         <div className="text-[7px] font-black uppercase tracking-[0.2em] text-emerald-400 text-glow whitespace-nowrap">
            DATA CHANNEL (Port 20)
          </div>
       </Html>
 
-      {/* Network Packets Traversing Channels Live Based on Input */}
+      {/* 3. Backup Channel */}
+      <Line points={backupPoints} color="#ef4444" lineWidth={4} transparent opacity={0.3} />
+      <Line points={backupPoints} color="#fca5a5" lineWidth={1} transparent opacity={0.7} />
+      <Html position={[-4, 2, -4]} transform distanceFactor={5} rotation={[0, Math.PI/4, 0]}>
+         <div className="text-[6px] font-black uppercase tracking-[0.2em] text-red-400 text-glow whitespace-nowrap text-center">
+           BACKUP CHANNEL (Port 2022)
+         </div>
+      </Html>
+
+      {/* 4. Secure Channel */}
+      <Line points={securePoints} color="#06b6d4" lineWidth={5} transparent opacity={0.4} />
+      <Line points={securePoints} color="#67e8f9" lineWidth={2} transparent opacity={0.8} />
+      <Html position={[2, 0.5, 3]} transform distanceFactor={5} rotation={[0, -Math.PI/4, 0]}>
+         <div className="text-[6px] font-black uppercase tracking-[0.2em] text-cyan-400 text-glow whitespace-nowrap text-center">
+           SECURE CHANNEL <br/>(Port 2222)
+         </div>
+      </Html>
+
+      {/* Background Ambient Packets */}
+      <BackgroundPacket pathPoints={backupPoints} baseColor="#ef4444" speedMultiplier={0.5} />
+      <BackgroundPacket pathPoints={backupPoints} baseColor="#ef4444" speedMultiplier={0.8} />
+      <BackgroundPacket pathPoints={securePoints} baseColor="#06b6d4" speedMultiplier={1.5} />
+
+      {/* Foreground Network Packets Traversing Channels Live Based on Input */}
       {packets.map((p) => {
          if (p.type === 'data') {
            return <DataPacket key={p.id} pathPoints={dataPoints} dir={p.dir} label={p.label} baseColor="#10b981" />
@@ -211,14 +314,14 @@ const DataPacket = ({ pathPoints, dir, label, baseColor }) => {
 
 export const Scene = ({ ftpState, packets, activeTransfer }) => {
   return (
-    <div className="canvas-container h-screen w-full">
+    <div className="absolute inset-0 w-full h-full z-0">
       <Canvas shadows gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[0, 5, 14]} fov={45} />
+        <PerspectiveCamera makeDefault position={[0, 6, 15]} fov={50} />
         <OrbitControls 
           enablePan={false} 
           enableZoom={true} 
           maxPolarAngle={Math.PI / 1.8} 
-          minPolarAngle={Math.PI / 2.5} 
+          minPolarAngle={Math.PI / 3} 
           minAzimuthAngle={-Math.PI / 4} 
           maxAzimuthAngle={Math.PI / 4}
         />
@@ -229,32 +332,37 @@ export const Scene = ({ ftpState, packets, activeTransfer }) => {
         <ambientLight intensity={0.2} />
         <pointLight position={[10, 10, 10]} intensity={1.5} color="#e0f2fe" />
         <pointLight position={[-10, 5, -5]} intensity={1} color="#0ea5e9" />
-        <spotLight position={[0, 10, 0]} intensity={1} penumbra={1} castShadow />
+        <spotLight position={[0, 10, 0]} intensity={1.5} penumbra={1} castShadow />
 
         {/* Backdrop Visuals */}
         <Stars radius={100} depth={50} count={3000} factor={3} saturation={0} fade speed={1} />
         <gridHelper args={[60, 40, '#0f172a', '#020617']} position={[0, -0.6, 0]} />
 
-        {/* Core Devices */}
+        {/* Topology Core Nodes */}
         <ClientDevice 
-          position={[-6, 0, 0]} 
+          position={[-6, 0, 2]} 
           active={ftpState !== FTP_STATES.DISCONNECTED} 
         />
         
         <ServerDevice 
-          position={[6, 0, 0]} 
+          position={[5, 0, -2]} 
           active={ftpState === FTP_STATES.LOGGED_IN || ftpState === FTP_STATES.TRANSFERRING} 
         />
 
-        {/* Connective Tissue */}
+        <BackupServer position={[-4, 0, -8]} />
+        <SecureServer position={[6, 0, 6]} />
+
+        {/* Central Complex Matrix Flow Paths */}
         <NetworkChannels 
-          p1={[-6, 0, 0]} 
-          p2={[6, 0, 0]} 
+          p1={[-6, 0, 2]} 
+          p2={[5, 0, -2]} 
+          pBackup={[-4, 0, -8]}
+          pSecure={[6, 0, 6]}
           packets={packets} 
         />
 
-        {/* Central Status Hologram Repositioned */}
-        <Html position={[0, 9.5, -6]} center transform distanceFactor={9}>
+        {/* Central Status Hologram Repositioned High and Center */}
+        <Html position={[0, 9, -5]} center transform distanceFactor={8}>
            <div className="tech-panel w-72 p-4 text-center border-emerald-500/50">
              <div className="text-xl font-black uppercase tracking-[0.2em] tech-text-cyan border-b border-cyan-500/30 pb-2 mb-2">
                 STATUS

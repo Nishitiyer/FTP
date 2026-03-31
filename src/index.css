@@ -55,12 +55,6 @@ body::after {
   height: 100vh;
 }
 
-.canvas-container {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-}
-
 /* Holographic UI Panels */
 .hologram-panel {
   background: rgba(15, 23, 42, 0.4);
