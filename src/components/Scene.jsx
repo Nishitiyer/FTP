@@ -95,7 +95,7 @@ const DataShard = ({ position, label, color }) => (
   <Float speed={2} rotationIntensity={1} floatIntensity={1} position={position}>
      <Box args={[0.6, 0.6, 0.6]}>
         <MeshDistortMaterial color={color} speed={2} distort={0.3} roughness={0} metalness={1} transmission={0.9} />
-        <Edges color={white} opacity={0.5} />
+        <Edges color="#ffffff" opacity={0.5} />
         <Html position={[0, -0.8, 0]} center transform>
            <span className="text-[6px] font-black text-white/40 uppercase whitespace-nowrap">{label}</span>
         </Html>
