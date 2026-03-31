@@ -1,38 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FTP_STATES, RESPONSE_CODES, FTPServer, INITIAL_FILES } from './logic/ftpProtocol';
 import { Scene } from './components/Scene';
-import { AnimatePresence, motion } from 'framer-motion';
-import { 
-  ShieldCheck, 
-  Activity, 
-  Zap, 
-  Layers,
-  Cpu
-} from 'lucide-react';
 
 const App = () => {
   const [ftpState, setFtpState] = useState(FTP_STATES.DISCONNECTED);
-  const [logs, setLogs] = useState([]);
-  const [packets, setPackets] = useState([]);
   const [clientFiles, setClientFiles] = useState(INITIAL_FILES);
   const [serverFiles, setServerFiles] = useState([]);
   const [activeTransfer, setActiveTransfer] = useState(null);
   
   const server = useRef(new FTPServer());
-  const packetId = useRef(0);
-
-  const addLog = useCallback((type, text) => {
-    setLogs(prev => [...prev, { type, text, timestamp: Date.now() }]);
-  }, []);
-
-  const sendPacket = useCallback((type, label, dir) => {
-    const id = ++packetId.current;
-    const newPacket = { id, type, label, dir };
-    setPackets(prev => [...prev, newPacket]);
-    setTimeout(() => {
-      setPackets(prev => prev.filter(p => p.id !== id));
-    }, 2000);
-  }, []);
 
   const handleCommand = async (cmd, argArr = []) => {
     const arg = argArr.join(' ');
@@ -40,7 +16,7 @@ const App = () => {
     if (result.nextState) setFtpState(result.nextState);
     if (result.code === 150) {
       if (cmd === 'LIST') {
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, 1000));
         setServerFiles(result.data);
       } else if (cmd === 'RETR') {
         const file = result.file;
@@ -60,48 +36,49 @@ const App = () => {
   };
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden select-none">
+    <div style={{ 
+      position: 'fixed', 
+      top: 0, left: 0, 
+      width: '100vw', height: '100vh', 
+      backgroundColor: '#000', 
+      overflow: 'hidden',
+      margin: 0, padding: 0
+    }}>
       
-      {/* BACKGROUND: CINEMATIC 3D ENGINE */}
-      <div className="absolute inset-0 z-0">
+      {/* 3D ENGINE LAYER (TRUE FULL SCREEN) */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
          <Scene 
             ftpState={ftpState} 
-            packets={packets} 
             activeTransfer={activeTransfer} 
             clientFiles={clientFiles} 
             serverFiles={serverFiles} 
             onCommand={handleCommand}
             onStart={startSession}
+            packets={[]}
          />
       </div>
 
-      {/* OVERLAY: GLOBAL STATUS TELEMETRY (Minimalist Fixed UI) */}
-      <div className="absolute inset-x-0 top-0 p-10 flex justify-between items-start pointer-events-none z-10">
-         <div className="flex flex-col gap-1">
-            <h1 className="text-[32px] font-black italic uppercase tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
-               NEXUS_FTP_V4
-            </h1>
-            <div className="flex items-center gap-3 opacity-40">
-               <ShieldCheck size={14} className="text-sky-400" />
-               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-sky-400">ENCRYPTION_ACTIVE</span>
-            </div>
-         </div>
-
-         <div className="flex gap-12 text-right">
-            <div>
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 block mb-1">DATA_PIPELINE</span>
-               <span className="text-[16px] font-black italic text-[#10b981]">OPTIMIZED</span>
-            </div>
-            <div>
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 block mb-1">TRANSFER_RATE</span>
-               <span className="text-[16px] font-black italic text-emerald-400">25.4 MB/S</span>
-            </div>
+      {/* OVERLAY TELEMETRY (FIXED CORNER) */}
+      <div style={{ 
+        position: 'absolute', top: '40px', left: '40px', 
+        zIndex: 10, pointerEvents: 'none', 
+        color: 'white', fontFamily: 'Outfit, sans-serif'
+      }}>
+         <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em', fontStyle: 'italic' }}>
+           NEXUS_FTP_V4_CONTROL
+         </h1>
+         <div style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5em', color: '#0ea5e9', opacity: 0.6, marginTop: '5px' }}>
+           ENCRYPTION: SHIELD_ACTIVE_SSL
          </div>
       </div>
 
-      {/* CINEMATIC SCANLINE OVERLAY */}
-      <div className="absolute inset-0 pointer-events-none hologram-glow opacity-10" />
-      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_250px_rgba(0,0,0,0.9)]" />
+      {/* FX OVERLAYS */}
+      <div style={{ 
+        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+        pointerEvents: 'none', 
+        boxShadow: 'inset 0 0 300px rgba(0,0,0,0.9)',
+        zIndex: 5
+      }} />
 
     </div>
   );
