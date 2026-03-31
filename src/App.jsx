@@ -1,277 +1,357 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { 
-  Float, 
-  Html,
-  Environment,
-  Stars,
-  PerspectiveCamera,
-  OrbitControls,
-  Edges,
-  Box,
-  Cylinder,
-  Torus,
-  Sphere,
-  MeshTransmissionMaterial
-} from '@react-three/drei';
-import * as THREE from 'three';
-import { FTP_STATES, RESPONSE_CODES, FTPServer, INITIAL_FILES } from './logic/ftpProtocol';
-import { 
-  ShieldCheck, 
-  Activity, 
-  Terminal as TerminalIcon, 
-  Settings, 
-  Database, 
-  Navigation,
-  Globe,
-  Lock,
-  Cpu,
-  Monitor
-} from 'lucide-react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Html, Line, OrbitControls, RoundedBox, Text, Stars, PerspectiveCamera, Environment } from "@react-three/drei";
+import * as THREE from "three";
 
-// -------------------------------------------------------------
-// UI COMPONENTS
-// -------------------------------------------------------------
-const CyberPanel = ({ title, icon: Icon, children, style = {} }) => (
-  <div style={{ 
-    backgroundColor: 'rgba(0,4,8,0.7)', 
-    border: '1px solid rgba(255,255,255,0.05)', 
-    backdropFilter: 'blur(30px)', 
-    borderRadius: '12px', 
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    marginBottom: '20px',
-    ...style 
-  }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: '10px 15px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {Icon && <Icon size={12} color="#0ea5e9" />}
-          <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.6)' }}>{title}</span>
-       </div>
-    </div>
-    <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-       {children}
-    </div>
-  </div>
-);
+const FILES = [
+  { name: "image_108.jpg", size: "4.2 MB", color: "#6fd7ff" },
+  { name: "backup.zip", size: "18.7 MB", color: "#c58cff" },
+  { name: "logs.tar", size: "7.9 MB", color: "#ff9b7a" },
+  { name: "report.pdf", size: "2.1 MB", color: "#ffd86c" },
+];
 
-const GlassHUD = ({ title, subtitle, color = "#0ea5e9", width = "320px", children }) => (
-  <div style={{ 
-     padding: '24px', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(40px)', 
-     borderLeft: `3px solid ${color}`, borderTop: '1px solid rgba(255,255,255,0.1)', 
-     borderRadius: '0 30px 0 0', boxShadow: '0 30px 100px rgba(0,0,0,0.8)',
-     width: width
-  }}>
-     <div style={{ marginBottom: '15px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-        <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.4em', display: 'block' }}>{subtitle}</span>
-        <h3 style={{ fontSize: '20px', fontWeight: 900, color: color, textTransform: 'uppercase', letterSpacing: '0.05em', fontStyle: 'italic', margin: 0 }}>{title}</h3>
-     </div>
-     {children}
-  </div>
-);
-
-// -------------------------------------------------------------
-// 3D ACTORS
-// -------------------------------------------------------------
-const RoboticDrone = ({ position }) => (
-  <group position={position}>
-     <Float speed={5} rotationIntensity={2} floatIntensity={1}>
-        <Box args={[0.4, 0.4, 0.4]}>
-           <meshPhysicalMaterial color="#38bdf8" emissive="#38bdf8" emissiveIntensity={2} />
-           <Edges color="#ffffff" opacity={0.5} />
-        </Box>
-     </Float>
-  </group>
-);
-
-const MonolithActor = ({ position, label, color, files = [] }) => (
-  <group position={position}>
-    <Box args={[14, 1.5, 12]}>
-       <meshPhysicalMaterial color="#01040a" roughness={0.1} metalness={1} />
-       <Edges color={color} opacity={0.3} />
-    </Box>
-    <Box args={[12, 0.4, 10]} position={[0, 0.8, 0]}>
-       <meshPhysicalMaterial color="#000" metalness={1} />
-       <Edges color={color} opacity={0.7} />
-    </Box>
-    {files.slice(0, 4).map((f, i) => (
-       <Float key={i} speed={2} position={[(i % 2 - 0.5) * 4, 3, (Math.floor(i/2) - 0.5) * 4]}>
-          <Box args={[1.5, 1.5, 1.5]}>
-             <MeshTransmissionMaterial color={color} transmission={1} thickness={1} />
-             <Edges color="#fff" />
-          </Box>
-       </Float>
-    ))}
-    <Html position={[0, -0.6, 12]} transform rotation={[-Math.PI/2, 0, 0]} center>
-       <span style={{ fontSize: '32px', fontWeight: 900, color: 'rgba(255,255,255,0.05)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.4em' }}>{label}</span>
-    </Html>
-    <RoboticDrone position={[-8, 1, 8]} />
-  </group>
-);
-
-const BackupServer = ({ position }) => (
-  <group position={position}>
-     <Box args={[10, 15, 10]}><meshPhysicalMaterial color="#020617" metalness={1} /><Edges color="#ef4444" opacity={0.4} /></Box>
-     <Sphere args={[2.5, 32, 16]}><meshBasicMaterial color="#ef4444" transparent opacity={0.4} /><pointLight color="#ef4444" intensity={8} /></Sphere>
-     <Html position={[0, 11, 0]} transform center>
-        <span style={{ fontSize: '12px', fontWeight: 900, color: '#ef4444', letterSpacing: '0.4em' }}>BACKUP_STORAGE</span>
-     </Html>
-  </group>
-);
-
-const RemoteServer = ({ position, active }) => (
-  <group position={position}>
-    <Box args={[12, 40, 12]} position={[0, 20, 0]}><meshPhysicalMaterial color="#01040a" metalness={1} /><Edges color="#10b981" opacity={0.3} /></Box>
-    <Torus args={[4.5, 0.1, 16, 100]} position={[0, 18, 6.2]}><meshBasicMaterial color="#10b981" />{active && <pointLight color="#10b981" intensity={10} />}</Torus>
-    <Html position={[42, 28, -5]} transform rotation={[0, -Math.PI/8, 0]} distanceFactor={10}>
-       <GlassHUD title="REMOTE_STORAGE" subtitle="UNIT_X64" color="#10b981" width="280px">
-          {["main_core", "bin/", "lib/", "logs/"].map(f => <div key={f} style={{ fontSize: '11px', color: '#10b981', fontWeight: 900, marginBottom: '5px', letterSpacing: '0.1em' }}>> {f}</div>)}
-       </GlassHUD>
-    </Html>
-  </group>
-);
-
-const BeamLink = ({ p1, p2, color, label, offset = 0 }) => {
-  const curve = useMemo(() => {
-    const v1 = new THREE.Vector3(...p1);
-    const v2 = new THREE.Vector3(...p2);
-    const mid = new THREE.Vector3(0, 25 + offset, 15);
-    return new THREE.CatmullRomCurve3([v1, mid, v2]);
-  }, [p1, p2, offset]);
+function Panel({ title, children, className = "" }) {
   return (
-    <group>
-      <mesh><tubeGeometry args={[curve, 100, 1.2, 12]} /><meshPhysicalMaterial color={color} transparent opacity={0.1} transmission={1} /></mesh>
-      <mesh><tubeGeometry args={[curve, 100, 0.4, 8]} /><meshBasicMaterial color={color} transparent opacity={0.8} /></mesh>
-      <Html position={[0, 18 + offset, 16]} transform center distanceFactor={12}>
-         <div style={{ background: 'rgba(0,0,0,0.9)', padding: '5px 15px', border: '1px solid rgba(255,255,255,0.2)', fontSize: '10px', fontWeight: 900, color: 'white', textTransform: 'uppercase', letterSpacing: '0.4em' }}>{label}</div>
-      </Html>
+    <div className={`hud rounded-2xl p-4 flex flex-col ${className}`} style={{ 
+      background: 'linear-gradient(180deg, rgba(8,18,28,.92), rgba(6,14,23,.78))',
+      border: '1px solid rgba(112, 243, 255, 0.16)',
+      boxShadow: 'inset 0 0 28px rgba(109, 243, 255, 0.05), 0 0 30px rgba(0, 0, 0, .32)',
+      backdropFilter: 'blur(12px)'
+    }}>
+      <div className="panel-title mb-3" style={{ fontSize: '11px', color: '#8bedff', letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 700 }}>{title}</div>
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function HoloLabel({ position, title, subtitle, width = 1.8, rotate = 0 }) {
+  return (
+    <group position={position} rotation={[0, rotate, 0]}>
+      <mesh>
+        <planeGeometry args={[width, subtitle ? 0.52 : 0.32]} />
+        <meshBasicMaterial color="#65e9ff" transparent opacity={0.08} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0, 0.001]}>
+        <planeGeometry args={[width, subtitle ? 0.52 : 0.32]} />
+        <meshBasicMaterial color="#7beeff" wireframe transparent opacity={0.35} side={THREE.DoubleSide} />
+      </mesh>
+      <Text position={[-width / 2 + 0.08, 0.08, 0.02]} anchorX="left" fontSize={0.1} color="#ddfbff" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text position={[-width / 2 + 0.08, -0.08, 0.02]} anchorX="left" fontSize={0.07} color="#85efff" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">
+          {subtitle}
+        </Text>
+      ) : null}
     </group>
   );
-};
+}
 
-const Scene = ({ ftpState, clientFiles, activeTransfer }) => (
-  <Canvas shadows gl={{ antialias: true, alpha: false, logarithmicDepthBuffer: false }}>
-    <PerspectiveCamera makeDefault position={[50, 60, 95]} fov={35} />
-    <OrbitControls enablePan={true} maxPolarAngle={Math.PI / 2.1} minPolarAngle={Math.PI / 10} />
-    <color attach="background" args={['#000306']} />
-    <ambientLight intensity={0.2} />
-    <spotLight position={[100, 100, 100]} angle={0.2} penumbra={1} intensity={6} color="#0ea5e9" />
-    <spotLight position={[-100, 100, -100]} angle={0.2} penumbra={1} intensity={4} color="#10b981" />
-    <Stars radius={250} depth={50} count={20000} factor={6} />
-    <gridHelper args={[600, 120, '#ffffff08', '#ffffff08']} position={[0, -0.1, 0]} />
-    
-    <MonolithActor position={[-40, 0, 30]} label="FTP CLIENT" color="#0ea5e9" files={clientFiles} />
-    <RemoteServer position={[45, 0, -25]} active={ftpState === FTP_STATES.LOGGED_IN} />
-    <BackupServer position={[-15, 0, -45]} />
-    
-    <BeamLink p1={[-30, 2, 30]} p2={[35, 12, -25]} color="#0ea5e9" label="CONTROL CHANNEL P21" />
-    <BeamLink p1={[-30, 1.5, 30]} p2={[35, 1.5, -25]} color="#10b981" label="DATA CHANNEL P20" offset={-15} />
-    
-    <Html position={[0, 50, 0]} transform center distanceFactor={12}>
-       <GlassHUD title="STATUS" subtitle="NEXUS_LINK_MONITOR" width="500px">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '10px', fontWeight: 900, color: '#0ea5e9' }}>SESSION_STATE</span>
-                <span style={{ fontSize: '18px', fontWeight: 900, color: 'white', fontStyle: 'italic' }}>{ftpState}</span>
-             </div>
-             <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '10px', fontWeight: 900, color: '#10b981' }}>BANDWIDTH</span>
-                <span style={{ fontSize: '18px', fontWeight: 900, color: 'white' }}>25.4 MB/S</span>
-             </div>
-          </div>
-          {activeTransfer && (
-             <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                   <span style={{ fontSize: '9px', fontWeight: 900, color: '#0ea5e9' }}>TX: {activeTransfer.name}</span>
-                   <span style={{ fontSize: '9px', fontWeight: 900, color: '#fff' }}>{activeTransfer.progress}%</span>
-                </div>
-                <div style={{ height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                   <div style={{ height: '100%', backgroundColor: '#0ea5e9', width: `${activeTransfer.progress}%` }} />
-                </div>
-             </div>
-          )}
-       </GlassHUD>
-    </Html>
-    <Environment preset="night" />
-  </Canvas>
-);
+function MovingPackets({ progress, active, direction }) {
+  const count = 9;
+  return (
+    <group>
+      {Array.from({ length: count }).map((_, i) => {
+        const t = ((progress / 100) + i * 0.11) % 1;
+        const p = direction === "upload" ? t : 1 - t;
+        const x = THREE.MathUtils.lerp(-2.8, 3.55, p);
+        const y = THREE.MathUtils.lerp(0.2, 0.5, Math.sin(p * Math.PI) * 0.2 + 0.5);
+        const z = THREE.MathUtils.lerp(1.0, 0.5, p);
+        return (
+          <mesh key={i} position={[x, y, z]} visible={active}>
+            <boxGeometry args={[0.14, 0.14, 0.14]} />
+            <meshStandardMaterial emissive={i % 2 ? "#6cf4ff" : "#ffd577"} emissiveIntensity={3} color={i % 2 ? "#52c9ff" : "#ffbe5c"} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
 
-// -------------------------------------------------------------
-// APP: ULTIMATE STABILITY
-// -------------------------------------------------------------
-const App = () => {
-  const [ftpState, setFtpState] = useState(FTP_STATES.DISCONNECTED);
-  const [logs, setLogs] = useState([]);
-  const [activeTransfer, setActiveTransfer] = useState(null);
-  const [clientFiles, setClientFiles] = useState(INITIAL_FILES);
-  const server = useRef(new FTPServer());
-  const addLog = (type, text) => setLogs(prev => [{ type, text, ts: Date.now() }, ...prev]);
+function Robot({ position }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.16, 0]}>
+        <capsuleGeometry args={[0.04, 0.12, 4, 8]} />
+        <meshStandardMaterial color="#9ec5d6" emissive="#6cefff" emissiveIntensity={0.25} metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, 0.32, 0]}>
+        <sphereGeometry args={[0.05, 16, 16]} />
+        <meshStandardMaterial color="#b7d9e7" emissive="#8ff3ff" emissiveIntensity={0.5} metalness={0.8} roughness={0.2} />
+      </mesh>
+    </group>
+  );
+}
 
-  const runCmd = async (cmd, argArr = []) => {
-    const res = server.current.processCommand(cmd, argArr.join(' '), ftpState);
-    if (res.nextState) setFtpState(res.nextState);
-    addLog('CMD', `${cmd} ${argArr.join(' ')}`);
-    addLog('RES', `${res.code} ${RESPONSE_CODES[res.code] || res.message}`);
-    if (res.code === 150 && cmd === 'RETR') {
-       setActiveTransfer({ name: res.file.name, progress: 0 });
-       for(let i=0; i<=100; i+=10) { 
-         setActiveTransfer(p => ({...p, progress: i}));
-         await new Promise(r => setTimeout(r, 100));
-       }
-       setClientFiles(p => [...p, res.file]);
-       setActiveTransfer(null);
+function CableBundle({ color, radius, points }) {
+  const curve = useMemo(() => new THREE.CatmullRomCurve3(points), [points]);
+  const geometry = useMemo(() => new THREE.TubeGeometry(curve, 80, radius, 16, false), [curve, radius]);
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.9} transparent opacity={0.78} metalness={0.15} roughness={0.25} />
+    </mesh>
+  );
+}
+
+function HoloPanel3D({ position, rotation = [0, 0, 0], width = 2.4, height = 1.1, title, rows }) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial color="#73f1ff" transparent opacity={0.08} side={THREE.DoubleSide} />
+      </mesh>
+      <Line points={[[-width / 2, height / 2, 0.01], [width / 2, height / 2, 0.01], [width / 2, -height / 2, 0.01], [-width / 2, -height / 2, 0.01], [-width / 2, height / 2, 0.01]]} color="#87f6ff" lineWidth={1} transparent opacity={0.9} />
+      <Text position={[-width / 2 + 0.12, height / 2 - 0.16, 0.02]} anchorX="left" fontSize={0.14} color="#dcfdff" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">
+        {title}
+      </Text>
+      {rows.map((row, i) => (
+        <Text key={row} position={[-width / 2 + 0.12, height / 2 - 0.34 - i * 0.18, 0.02]} anchorX="left" fontSize={0.09} color={i === 0 ? "#8ef4ff" : "#bff8ff"} font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">
+          {row}
+        </Text>
+      ))}
+    </group>
+  );
+}
+
+function Scene3D({ progress, stage, direction, selectedFile, speed, serverIP }) {
+  const groupRef = useRef();
+  const glow = stage === "transferring" || stage === "paused" || stage === "complete";
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.18) * 0.025;
     }
-  };
+  });
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000408', color: '#fff', fontFamily: 'Outfit, sans-serif', display: 'flex', overflow: 'hidden' }}>
+    <group ref={groupRef} position={[0, -0.4, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.8, -1.05, 0.25]}>
+        <planeGeometry args={[12.5, 8.5, 30, 30]} />
+        <meshBasicMaterial color="#94e6ff" wireframe transparent opacity={0.22} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.8, -1.08, 0.25]}>
+        <planeGeometry args={[12.5, 8.5]} />
+        <meshStandardMaterial color="#0a1420" metalness={0.1} roughness={0.9} />
+      </mesh>
+
+      <RoundedBox args={[2.4, 0.32, 1.7]} radius={0.08} smoothness={4} position={[-2.65, -0.66, 1.05]}>
+        <meshStandardMaterial color="#8cb5ca" metalness={0.75} roughness={0.25} emissive="#7ce6ff" emissiveIntensity={0.08} />
+      </RoundedBox>
+      <Text position={[-2.8, -1.15, 1.8]} fontSize={0.32} color="#e5fdff" anchorX="left" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">FTP CLIENT</Text>
+
+      <group position={[-2.9, -0.34, 1.05]}>
+        {FILES.map((file, i) => (
+          <mesh key={file.name} position={[i % 2 === 0 ? 0 : 0.46, 0.22 + Math.floor(i / 2) * 0.18, i % 2 === 0 ? -0.18 : 0.18]}>
+            <boxGeometry args={[0.24, 0.24, 0.24]} />
+            <meshStandardMaterial color={file.color} emissive={file.color} emissiveIntensity={selectedFile.name === file.name ? 2.2 : 0.9} transparent opacity={0.92} />
+          </mesh>
+        ))}
+      </group>
+
+      <group position={[-3.1, 0.78, 2.45]}>
+        <RoundedBox args={[0.9, 1.6, 0.9]} radius={0.06} smoothness={4}>
+          <meshStandardMaterial color="#5f6670" metalness={0.85} roughness={0.28} emissive="#ff4f74" emissiveIntensity={0.12} />
+        </RoundedBox>
+        <mesh position={[0, 0.1, 0.48]}>
+          <cylinderGeometry args={[0.13, 0.13, 0.12, 24]} />
+          <meshStandardMaterial color="#ff6c8d" emissive="#ff426f" emissiveIntensity={2.5} />
+        </mesh>
+        <Text position={[0, 1.1, 0.1]} fontSize={0.18} color="#ffd0d8" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">BACKUP SERVER</Text>
+        <Text position={[0, 0.9, 0.1]} fontSize={0.07} color="#ffb8c5" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">SERVER: 192.168.1.110</Text>
+      </group>
+
+      <group position={[3.3, 0.12, -0.05]}>
+        <RoundedBox args={[1.65, 2.85, 1.3]} radius={0.06} smoothness={4}>
+          <meshStandardMaterial color="#61717c" metalness={0.86} roughness={0.24} emissive="#72dfff" emissiveIntensity={0.08} />
+        </RoundedBox>
+        <mesh position={[0.48, -0.18, 0.67]}>
+          <torusGeometry args={[0.33, 0.08, 18, 42]} />
+          <meshStandardMaterial color="#ffbf67" emissive="#ffbc5f" emissiveIntensity={2.2} />
+        </mesh>
+        <Text position={[-0.38, 1.72, 0.66]} fontSize={0.16} color="#e0fcff" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">REMOTE SERVER</Text>
+        <Text position={[-0.32, 1.5, 0.66]} fontSize={0.06} color="#b8f6ff" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">FTP SERVER: {serverIP}</Text>
+        <Text position={[0.18, -1.74, 0.8]} fontSize={0.18} color="#d7fbff" font="https://fonts.gstatic.com/s/jetbrainsmono/v18/tMe62o-9ETq98pR8pW7W58Xp.woff">REMOTE SERVER</Text>
+      </group>
+
+      <CableBundle color="#ffd892" radius={0.09} points={[new THREE.Vector3(-1.6, -0.5, 1.15), new THREE.Vector3(-0.25, -0.1, 0.95), new THREE.Vector3(1.15, 0.05, 0.45), new THREE.Vector3(3.05, 0.02, 0.15)]} />
+      <CableBundle color="#7fdfff" radius={0.06} points={[new THREE.Vector3(-1.7, -0.5, 1.05), new THREE.Vector3(-0.1, 0.65, 0.85), new THREE.Vector3(1.4, 0.75, 0.4), new THREE.Vector3(3.05, 0.98, 0.18)]} />
+      <CableBundle color="#8dffd0" radius={0.12} points={[new THREE.Vector3(-1.7, -0.53, 1.08), new THREE.Vector3(-0.18, -0.15, 0.78), new THREE.Vector3(1.5, -0.08, 0.32), new THREE.Vector3(3.06, -0.12, 0.05)]} />
+
+      <MovingPackets progress={progress} active={glow} direction={direction} />
+
+      <HoloPanel3D position={[-2.55, 0.18, 2.2]} rotation={[0.03, 0.35, -0.08]} width={2.2} height={1.15} title="SERVER SELECTION" rows={["REMOTE SERVER (Connected)", "BACKUP SERVER (Standby)", "SECURE SERVER (Offline)"]} />
+      <HoloPanel3D position={[0.25, 1.5, 1.4]} rotation={[-0.1, -0.1, -0.04]} width={2.8} height={1.25} title="STATUS" rows={["ACTIVE CONNECTION", `TRANSFERRING: ${selectedFile.name} (${selectedFile.size})`, `SPEED: ${speed} MB/s`]} />
+
+      <HoloLabel position={[0.42, 0.16, 0.56]} title="FTP LINK" subtitle="LIVE TRANSFER BUS" width={1.6} rotate={-0.15} />
+      <HoloLabel position={[0.65, -0.12, 0.44]} title="CONTROL CHANNEL (Port 21)" width={2.1} rotate={-0.14} />
+      <HoloLabel position={[0.85, -0.38, 0.34]} title="BACKUP CHANNEL (Port 2022)" width={2.2} rotate={-0.12} />
+      <HoloLabel position={[1.45, -0.7, 0.1]} title="DATA CHANNEL (Port 20)" width={1.9} rotate={-0.12} />
+
+      <Robot position={[-4.15, -0.82, 1.6]} />
+      <Robot position={[3.55, -0.78, 0.5]} />
+
+      <mesh position={[5.15, -0.52, 1.25]} rotation={[0.05, 0.35, 0.1]}>
+        <octahedronGeometry args={[0.52, 0]} />
+        <meshStandardMaterial color="#2b272f" emissive="#ffcf75" emissiveIntensity={0.12} metalness={0.5} roughness={0.4} />
+      </mesh>
       
-      {/* LEFT SIDEBAR */}
-      <div style={{ width: '380px', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', borderRight: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(30px)', zIndex: 10, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-         <div style={{ padding: '20px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', margin: 0, textTransform: 'uppercase' }}>NEXUS_FTP_SIM</h1>
-            <span style={{ fontSize: '10px', color: '#0ea5e9', fontWeight: 900 }}>ENCRYPTION: SHIELD_ACTIVE_SSL</span>
-         </div>
-         <div style={{ flex: 1, padding: '0 20px', overflowY: 'auto' }}>
-            <CyberPanel title="CONTROLS" icon={Settings}>
-               <button onClick={() => setFtpState(FTP_STATES.CONNECTING)} style={{ width: '100%', padding: '15px', backgroundColor: '#0ea5e9', color: '#000', border: 'none', fontWeight: 900, marginBottom: '10px', cursor: 'pointer' }}>CONNECT_HANDSHAKE</button>
-               <button onClick={() => runCmd('USER', ['ops'])} style={{ width: '100%', padding: '12px', background: 'none', border: '1px solid #0ea5e9', color: '#0ea5e9', fontWeight: 900, cursor: 'pointer' }}>LOGIN_PROTOCOL</button>
-               <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px' }}>
-                  <button onClick={() => runCmd('RETR', ['nexus.sys'])} style={{ width: '100%', padding: '12px', backgroundColor: '#10b981', color: '#000', border: 'none', fontWeight: 900, cursor: 'pointer' }}>DEMO_RETR_FILE</button>
-               </div>
-            </CyberPanel>
-            <CyberPanel title="LOCAL_FILES" icon={Database}>
-               {clientFiles.map(f => <div key={f.name} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{f.name} ({f.size})</div>)}
-            </CyberPanel>
-         </div>
-      </div>
+      <Stars radius={200} depth={50} count={12000} factor={6} />
+      <Environment preset="night" />
+    </group>
+  );
+}
 
-      {/* CENTER SCENE */}
-      <div style={{ flex: 1, position: 'relative' }}>
-         <Scene ftpState={ftpState} clientFiles={clientFiles} activeTransfer={activeTransfer} />
-         <div style={{ position: 'absolute', bottom: '30px', right: '30px', padding: '15px 30px', backgroundColor: '#0ea5e9', color: '#000', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', fontSize: '14px' }}>TX_ALIVE_25.4_MBPS</div>
-      </div>
+export default function App() {
+  const [stage, setStage] = useState("idle");
+  const [progress, setProgress] = useState(0);
+  const [direction, setDirection] = useState("upload");
+  const [secure, setSecure] = useState(true);
+  const [mode, setMode] = useState("active");
+  const [selectedFile, setSelectedFile] = useState(FILES[0]);
+  const [logs, setLogs] = useState(["System ready.", "Awaiting operator input."]);
+  const [serverIP, setServerIP] = useState("192.168.1.100");
+  const [port, setPort] = useState("21");
+  const [username, setUsername] = useState("operator");
+  const [password, setPassword] = useState("********");
+  const [speed, setSpeed] = useState(25);
 
-      {/* RIGHT SIDEBAR */}
-      <div style={{ width: '420px', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', borderLeft: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(30px)', zIndex: 10, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-         <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            <CyberPanel title="PROTOCOL_TRACE" icon={Navigation} style={{ height: '300px' }}>
-               {["1. SELECT HOST", "2. AUTHENTICATE", "3. OPEN CONTROL", "4. DATA CHANNEL", "5. TRANSMIT", "6. CLOSE"].map((t, i) => (
-                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', opacity: (i < 3 ? 1 : 0.2) }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: (i < 3 ? '#10b981' : '#fff') }} />
-                    <span style={{ fontSize: '11px', fontWeight: 900 }}>{t}</span>
-                 </div>
-               ))}
-            </CyberPanel>
-            <CyberPanel title="SESSION_LOG" icon={TerminalIcon}>
-               {logs.slice(0, 15).map((l, i) => <div key={i} style={{ fontSize: '10px', marginBottom: '5px', color: (l.type === 'CMD' ? '#0ea5e9' : '#10b981') }}>[{l.type}] {l.text}</div>)}
-            </CyberPanel>
-         </div>
-      </div>
+  function pushLog(line) {
+    setLogs((prev) => [line, ...prev].slice(0, 12));
+  }
 
+  useEffect(() => {
+    if (stage !== "transferring") return;
+    const timer = window.setInterval(() => {
+      setProgress((p) => {
+        const next = Math.min(100, p + 1.5);
+        if (next >= 100) {
+          setStage("complete");
+          pushLog(`${direction === "upload" ? "Upload" : "Download"} complete: ${selectedFile.name}`);
+        }
+        return next;
+      });
+      setSpeed((s) => {
+        const n = s + (Math.random() * 4 - 2);
+        return Math.max(15, Math.min(34, +n.toFixed(1)));
+      });
+    }, 120);
+    return () => window.clearInterval(timer);
+  }, [stage, direction, selectedFile.name]);
+
+  const handleStart = () => { setStage("host_selected"); setProgress(0); pushLog("Remote host selected."); };
+  const handleConnect = () => { if (stage === "idle") setStage("host_selected"); setStage("connected"); pushLog(`Control channel opened on port ${port}.`); };
+  const handleLogin = () => { setStage("authenticated"); pushLog(`User authenticated as ${username}.`); };
+
+  const handleTransfer = (d) => {
+    setDirection(d);
+    setProgress(0);
+    setStage("transferring");
+    pushLog(`${d === "upload" ? "Uploading" : "Downloading"} ${selectedFile.name}...`);
+  };
+
+  const handlePause = () => {
+    if (stage === "transferring") { setStage("paused"); pushLog("Transfer paused."); }
+    else if (stage === "paused") { setStage("transferring"); pushLog("Transfer resumed."); }
+  };
+
+  const handleReset = () => { setStage("idle"); setProgress(0); setLogs(["System reset."]); };
+
+  const stageList = [
+    ["Select remote host", stage !== "idle"],
+    ["Authenticate user", ["authenticated", "transferring", "paused", "complete"].includes(stage)],
+    ["Open control channel", ["connected", "authenticated", "transferring", "paused", "complete"].includes(stage)],
+    ["Negotiate data port", ["transferring", "paused", "complete"].includes(stage)],
+    ["File transmission", ["transferring", "paused", "complete"].includes(stage)],
+    ["Session terminate", stage === "complete"],
+  ];
+
+  return (
+    <div className="app-shell min-h-screen bg-[#06111b] text-white flex flex-col" style={{ overflow: 'hidden' }}>
+      <header className="px-6 pt-6 pb-2 flex items-start justify-between gap-4 relative z-10">
+        <div>
+          <div className="text-[42px] font-black italic tracking-tight text-cyan-50 uppercase">NEXUS_FTP_V4_CONTROL</div>
+          <div className="mt-1 text-sky-400 text-sm tracking-[0.35em] font-semibold">ENCRYPTION: SHIELD_ACTIVE_SSL</div>
+        </div>
+        <Panel title="Status" className="min-w-[280px] max-w-[320px]">
+          <div className="space-y-2 text-sm text-cyan-50/90">
+            <div className="flex justify-between"><span>CONNECTION</span><span className="text-emerald-400 font-bold">{stage.toUpperCase()}</span></div>
+            <div className="text-cyan-300">TX: {selectedFile.name}</div>
+            <div>SPEED: {speed} MB/s</div>
+          </div>
+          <div className="mt-3 h-2 bg-white/5 rounded-full overflow-hidden border border-cyan-300/10">
+            <div className="h-full bg-sky-500 shadow-[0_0_15px_#0ea5e9]" style={{ width: `${progress}%` }} />
+          </div>
+        </Panel>
+      </header>
+
+      <div className="flex-1 grid grid-cols-[320px_1fr_320px] gap-4 px-6 pb-6 overflow-hidden">
+        <aside className="flex flex-col gap-4 overflow-auto custom-scrollbar pr-2">
+          <Panel title="Handshake Controls">
+            <div className="space-y-3">
+              <button className="w-full py-3 bg-sky-500 text-black font-black uppercase text-[12px] tracking-widest rounded-xl hover:scale-[1.02] transition-transform" onClick={handleConnect}>CONNECT</button>
+              <button className="w-full py-3 border border-sky-400 text-sky-400 font-black uppercase text-[12px] tracking-widest rounded-xl hover:bg-sky-400/10" onClick={handleLogin}>AUTHENTICATE</button>
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <button className="py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase" onClick={() => handleTransfer("upload")}>UPLOAD</button>
+                <button className="py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase" onClick={() => handleTransfer("download")}>DOWNLOAD</button>
+                <button className="py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase" onClick={handlePause}>{stage === "paused" ? "RESUME" : "PAUSE"}</button>
+                <button className="py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase" onClick={handleReset}>RESET</button>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Session Input">
+            <div className="space-y-3">
+              <input className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-sky-400 outline-none text-xs" value={serverIP} onChange={(e) => setServerIP(e.target.value)} placeholder="Server IP" />
+              <input className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-sky-400 outline-none text-xs" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" />
+              <input className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-sky-400 outline-none text-xs" value={password} type="password" placeholder="Password" />
+            </div>
+          </Panel>
+
+          <Panel title="Local Files" className="flex-1">
+            <div className="space-y-2">
+              {FILES.map((file) => (
+                <button key={file.name} className={`w-full text-left p-3 rounded-xl border border-white/5 bg-black/20 hover:border-sky-500/50 transition-colors ${selectedFile.name === file.name ? "border-sky-500 bg-sky-500/10" : ""}`} onClick={() => setSelectedFile(file)}>
+                  <div className="text-[11px] font-black text-white">{file.name}</div>
+                  <div className="text-[9px] text-sky-400/50">{file.size}</div>
+                </button>
+              ))}
+            </div>
+          </Panel>
+        </aside>
+
+        <main className="hud rounded-[28px] overflow-hidden relative" style={{ background: '#000' }}>
+          <Canvas camera={{ position: [5, 5, 10], fov: 35 }}>
+            <Suspense fallback={<Html center>LOADING_SECURE_ENGINE...</Html>}>
+              <Scene3D progress={progress} stage={stage} direction={direction} selectedFile={selectedFile} speed={speed} serverIP={serverIP} />
+            </Suspense>
+            <OrbitControls enablePan={true} minDistance={8} maxDistance={15} target={[0, 0, 0]} />
+          </Canvas>
+          <div className="absolute bottom-6 right-6 px-6 py-2 bg-sky-500 text-black font-black italic text-xs tracking-widest shadow-[0_0_30px_#0ea5e9]">TX_ALIVE_25.4 MBPS</div>
+        </main>
+
+        <aside className="flex flex-col gap-4 overflow-auto custom-scrollbar pl-2">
+          <Panel title="Protocol Trace">
+            <div className="space-y-4">
+              {stageList.map(([label, done], i) => (
+                <div key={label} className={`flex items-center gap-3 transition-all ${done ? "opacity-100" : "opacity-20"}`}>
+                  <div className={`w-2 h-2 rounded-full ${done ? "bg-emerald-400 shadow-[0_0_10px_#10b981]" : "bg-white/40"}`} />
+                  <span className="text-[11px] font-black uppercase tracking-widest">{label}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Session Log" className="flex-1">
+            <div className="space-y-2 font-mono text-[9px] text-sky-400/70">
+              {logs.map((line, i) => (
+                <div key={i} className="border-b border-white/5 pb-1">[{new Date().toLocaleTimeString()}] {line}</div>
+              ))}
+            </div>
+          </Panel>
+        </aside>
+      </div>
     </div>
   );
-};
-
-export default App;
+}
