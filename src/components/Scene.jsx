@@ -1,8 +1,7 @@
 import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { 
   Float, 
-  MeshTransmissionMaterial, 
   ContactShadows, 
   Html,
   Environment,
@@ -10,168 +9,281 @@ import {
   PerspectiveCamera,
   Line,
   BakeShadows,
-  OrbitControls
+  OrbitControls,
+  Edges,
+  Box,
+  Cylinder
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { FTP_STATES } from '../logic/ftpProtocol';
 
-const RefractiveOrb = ({ position, color, active, label, icon: Icon }) => {
-  const mesh = useRef();
-  
-  // Custom glass material settings for that "premium" look
-  const config = {
-    backside: true,
-    backsideThickness: 0.3,
-    samples: 16,
-    resolution: 1024,
-    transmission: 1,
-    clearcoat: 1,
-    clearcoatRoughness: 0.0,
-    thickness: 0.3,
-    chromaticAberration: 0.5,
-    anisotropy: 0.3,
-    roughness: 0,
-    distortion: 0.5,
-    distortionScale: 0.1,
-    temporalDistortion: 0.2,
-    ior: 1.5,
-    color: color,
-    g_color: color,
-  };
-
-  useFrame((state) => {
-    if (active) {
-      mesh.current.rotation.y += 0.01;
-      mesh.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 2) * 0.05);
-    }
-  });
-
+const ClientDevice = ({ position, active }) => {
   return (
     <group position={position}>
-      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-        <mesh ref={mesh} receiveShadow castShadow>
-          <sphereGeometry args={[1.2, 64, 64]} />
-          <MeshTransmissionMaterial {...config} />
-        </mesh>
-        
-        {/* Internal Core Glow */}
-        <mesh>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshBasicMaterial color={color} transparent opacity={active ? 0.8 : 0.2} />
-        </mesh>
+      {/* Base Pedestal */}
+      <Box args={[4, 1, 4]} position={[0, -0.5, 0]}>
+        <meshStandardMaterial color="#041524" roughness={0.2} metalness={0.8} />
+        <Edges color="#0ea5e9" opacity={0.5} transparent />
+      </Box>
+      <Box args={[3.5, 0.5, 3.5]} position={[0, 0.25, 0]}>
+        <meshStandardMaterial color="#020a12" roughness={0.4} metalness={0.8} />
+        <Edges color="#0ea5e9" opacity={0.8} transparent />
+      </Box>
+      
+      {/* File Cubes */}
+      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5} position={[-0.5, 1.5, 0]}>
+         <Box args={[0.8, 0.8, 0.8]}>
+           <meshStandardMaterial color="#0ea5e9" transparent opacity={0.4} metalness={0.9} roughness={0.1} />
+           <Edges color="#38bdf8" />
+           <Html position={[0, 0.6, 0]} center transform distanceFactor={3}>
+             <div className="text-[6px] font-mono font-bold text-cyan-200 uppercase">Documents</div>
+           </Html>
+         </Box>
+      </Float>
+      <Float speed={2.5} rotationIntensity={0.8} floatIntensity={0.6} position={[0.8, 2, -0.5]}>
+         <Box args={[0.6, 0.6, 0.6]}>
+           <meshStandardMaterial color="#38bdf8" transparent opacity={0.5} />
+           <Edges color="#7dd3fc" />
+         </Box>
+      </Float>
+      <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.8} position={[-0.8, 2.5, -1]}>
+         <Box args={[0.7, 0.7, 0.7]}>
+           <meshStandardMaterial color="#0ea5e9" transparent opacity={0.3} />
+           <Edges color="#38bdf8" />
+         </Box>
       </Float>
 
-      {/* Holographic Label */}
-      <Html position={[0, -2, 0]} center transform distanceFactor={5}>
-        <div className={`p-4 hologram-panel select-none pointer-events-none transition-all duration-500 ${active ? 'opacity-100 scale-110' : 'opacity-40 scale-100'}`}>
-           <h3 className="text-xl font-black uppercase tracking-widest text-[#0ea5e9]/80 mb-0.5">{label}</h3>
-           <div className={`h-1 w-full bg-gradient-to-r from-transparent via-${active ? 'blue' : 'slate'}-500/50 to-transparent`} />
+      {/* Holographic Client Panel */}
+      <Html position={[-3, 3, 0]} transform distanceFactor={7} rotation={[0, Math.PI/6, 0]}>
+        <div className="tech-panel tech-panel-blue w-72 p-4 -skew-x-6">
+          <div className="border-b border-cyan-500/30 pb-2 mb-2">
+            <h3 className="text-2xl font-black uppercase tracking-widest tech-text-cyan m-0">FTP CLIENT</h3>
+          </div>
+          <div className="text-xs font-mono text-cyan-100/90 mb-2">LOCAL FILES</div>
+          <div className="grid grid-cols-2 gap-2 text-[10px] uppercase font-bold tracking-widest">
+            <div className="flex items-center gap-1"><span className="text-cyan-400">📁</span> Documents</div>
+            <div className="flex items-center gap-1"><span className="text-cyan-400">📁</span> Photos</div>
+            <div className="flex items-center gap-1"><span className="text-cyan-400">📁</span> Uploads</div>
+            <div className="flex items-center gap-1"><span className="text-cyan-400">📁</span> Projects</div>
+          </div>
         </div>
       </Html>
     </group>
   );
 };
 
-const NeuralPath = ({ p1, p2, active, type }) => {
-  const points = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(...p1),
-      new THREE.Vector3((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2 + 2, (p1[2] + p2[2]) / 2),
-      new THREE.Vector3(...p2)
-    ]);
-    return curve.getPoints(50);
-  }, [p1, p2]);
-
-  const progress = useRef(0);
-  const color = type === 'control' ? '#0ea5e9' : '#10b981';
-
+const ServerDevice = ({ position, active }) => {
   return (
-    <group>
-      <Line 
-        points={points} 
-        color={color} 
-        lineWidth={1} 
-        transparent 
-        opacity={active ? 0.3 : 0.1} 
-      />
-      {active && (
-         <NeuralPulse points={points} color={color} />
-      )}
+    <group position={position}>
+      {/* Server Tower Base */}
+      <Box args={[3.2, 7, 3.2]} position={[0, 3, 0]}>
+        <meshStandardMaterial color="#020a12" roughness={0.3} metalness={0.9} />
+        <Edges color="#10b981" opacity={0.4} transparent />
+      </Box>
+      
+      {/* Front Face Panel */}
+      <Box args={[2.8, 6.8, 0.2]} position={[0, 3, 1.6]}>
+         <meshStandardMaterial color="#041524" />
+      </Box>
+
+      {/* Glowing Port */}
+      <Cylinder args={[0.8, 0.8, 0.4, 32]} position={[0, 3, 1.7]} rotation={[Math.PI/2, 0, 0]}>
+         <meshBasicMaterial color={active ? "#10b981" : "#1e293b"} />
+         {active && <pointLight color="#10b981" intensity={3} distance={10} />}
+      </Cylinder>
+
+      {/* Decorative Drive Bays / Status Lights */}
+      {[1, 1.5, 2, 4.5, 5, 5.5].map((y, i) => (
+        <mesh key={i} position={[0.8, y, 1.7]}>
+          <boxGeometry args={[0.8, 0.1, 0.1]} />
+          <meshBasicMaterial color={Math.random() > 0.5 && active ? "#10b981" : "#042f2e"} />
+        </mesh>
+      ))}
+
+      {/* Holographic Server Panel */}
+      <Html position={[3.5, 5, 0]} transform distanceFactor={7} rotation={[0, -Math.PI/6, 0]}>
+        <div className="tech-panel w-72 p-4 skew-x-6">
+          <div className="border-b border-emerald-500/30 pb-2 mb-2">
+            <h3 className="text-2xl font-black uppercase tracking-widest tech-text-green m-0">REMOTE SERVER</h3>
+          </div>
+          <div className="text-xs font-mono text-emerald-100/60 mb-3 border-b border-emerald-500/20 pb-2">FTP SERVER: 192.168.1.100</div>
+          <div className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 mb-2">REMOTE FILES</div>
+          <div className="flex flex-col gap-1.5 text-xs font-mono text-emerald-50">
+             <div className="flex items-center gap-2"><span className="text-emerald-500">📁</span> wwwroot</div>
+             <div className="flex items-center gap-2"><span className="text-emerald-500">📁</span> images</div>
+             <div className="flex items-center gap-2"><span className="text-emerald-500">📁</span> logs</div>
+          </div>
+        </div>
+      </Html>
     </group>
   );
 };
 
-const NeuralPulse = ({ points, color }) => {
-  const sphere = useRef();
-  const pointIndex = useRef(0);
+const NetworkChannels = ({ p1, p2, packets }) => {
+  // Control Channel: Arc (Yellow)
+  const controlPoints = useMemo(() => {
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(...p1).add(new THREE.Vector3(0, 1.5, 0)),
+      new THREE.Vector3(0, 5, 0), // Highest point of the arc
+      new THREE.Vector3(...p2).add(new THREE.Vector3(0, 3, 0))
+    );
+    return curve.getPoints(50);
+  }, [p1, p2]);
 
-  useFrame(() => {
-    pointIndex.current = (pointIndex.current + 1) % points.length;
-    sphere.current.position.copy(points[pointIndex.current]);
-  });
+  // Data Channel: Direct somewhat wobbly/straight Path (Green)
+  const dataPoints = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(...p1).add(new THREE.Vector3(1.5, 1, 0)),
+      new THREE.Vector3(-2, 1.2, 0),
+      new THREE.Vector3(2, 2.8, 0),
+      new THREE.Vector3(...p2).add(new THREE.Vector3(-0.5, 3, 1.7)) // Into the port
+    ]);
+    return curve.getPoints(50);
+  }, [p1, p2]);
 
   return (
-    <mesh ref={sphere}>
-      <sphereGeometry args={[0.1, 16, 16]} />
-      <meshBasicMaterial color={color} transparent opacity={1} />
-      <pointLight distance={2} intensity={5} color={color} />
-    </mesh>
+    <group>
+      {/* Control Channel */}
+      <Line points={controlPoints} color="#eab308" lineWidth={3} transparent opacity={0.6} />
+      <Line points={controlPoints} color="#fef08a" lineWidth={1} transparent opacity={0.9} />
+      <Html position={[0, 4, 0]} transform distanceFactor={5}>
+         <div className="text-[8px] font-black uppercase tracking-[0.2em] text-yellow-400 text-glow whitespace-nowrap">
+           <span className="text-yellow-200">FTP LINK</span><br/>CONTROL CHANNEL (Port 21)
+         </div>
+      </Html>
+
+      {/* Data Channel */}
+      <Line points={dataPoints} color="#10b981" lineWidth={8} transparent opacity={0.3} />
+      <Line points={dataPoints} color="#34d399" lineWidth={2} transparent opacity={0.8} />
+      <Html position={[0, 1.5, 0]} transform distanceFactor={5}>
+         <div className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-400 text-glow whitespace-nowrap">
+           DATA CHANNEL (Port 20)
+         </div>
+      </Html>
+
+      {/* Data Packets traversing the green data channel */}
+      {packets.map((p) => {
+         // Use the data channel path if type is data
+         if (p.type === 'data') {
+           return <DataPacket key={p.id} pathPoints={dataPoints} dir={p.dir} label={p.label} />
+         }
+         return null;
+      })}
+    </group>
   );
 };
 
-export const Scene = ({ ftpState, packets }) => {
+const DataPacket = ({ pathPoints, dir, label }) => {
+  const mesh = useRef();
+  const progress = useRef(dir === 'c2s' ? 0 : 1);
+
+  useFrame((state, delta) => {
+    const speed = 0.5 * delta;
+    if (dir === 'c2s') {
+      progress.current = Math.min(1, progress.current + speed);
+    } else {
+      progress.current = Math.max(0, progress.current - speed);
+    }
+
+    const index = Math.floor(progress.current * (pathPoints.length - 1));
+    if (mesh.current && pathPoints[index]) {
+      mesh.current.position.copy(pathPoints[index]);
+      mesh.current.rotation.x += 0.05;
+      mesh.current.rotation.y += 0.05;
+    }
+  });
+
+  return (
+    <group ref={mesh}>
+      <Box args={[0.5, 0.5, 0.5]}>
+         <meshBasicMaterial color="#34d399" transparent opacity={0.8} />
+         <Edges color="#a7f3d0" />
+      </Box>
+      <Html className="pointer-events-none" distanceFactor={4}>
+         <div className="px-1 py-0.5 bg-emerald-900/60 border border-emerald-400/50 text-[6px] font-mono text-emerald-100 rounded">
+            {label}
+         </div>
+      </Html>
+    </group>
+  );
+}
+
+export const Scene = ({ ftpState, packets, activeTransfer }) => {
   return (
     <div className="canvas-container h-screen w-full">
       <Canvas shadows gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[0, 0, 10]} fov={50} />
+        <PerspectiveCamera makeDefault position={[0, 5, 14]} fov={45} />
         <OrbitControls 
           enablePan={false} 
-          enableZoom={false} 
+          enableZoom={true} 
           maxPolarAngle={Math.PI / 1.8} 
-          minPolarAngle={Math.PI / 2.2} 
-          minAzimuthAngle={-Math.PI / 6} 
-          maxAzimuthAngle={Math.PI / 6}
+          minPolarAngle={Math.PI / 2.5} 
+          minAzimuthAngle={-Math.PI / 4} 
+          maxAzimuthAngle={Math.PI / 4}
         />
         
         <color attach="background" args={['#020617']} />
         
         {/* Cinematic Lighting */}
-        <ambientLight intensity={0.1} />
-        <pointLight position={[10, 10, 10]} intensity={1.5} />
-        <pointLight position={[-10, -5, -5]} intensity={1} color="#0ea5e9" />
-        <spotLight position={[0, 10, 0]} intensity={2} penumbra={1} castShadow />
+        <ambientLight intensity={0.2} />
+        <pointLight position={[10, 10, 10]} intensity={1.5} color="#e0f2fe" />
+        <pointLight position={[-10, 5, -5]} intensity={1} color="#0ea5e9" />
+        <spotLight position={[0, 10, 0]} intensity={1} penumbra={1} castShadow />
 
         {/* Backdrop Visuals */}
-        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-        <gridHelper args={[100, 20, '#1e293b', '#0f172a']} position={[0, -5, 0]} />
+        <Stars radius={100} depth={50} count={3000} factor={3} saturation={0} fade speed={1} />
+        <gridHelper args={[60, 40, '#0f172a', '#020617']} position={[0, -0.6, 0]} />
 
-        {/* Nodes */}
-        <RefractiveOrb 
-          position={[-5, 0, 0]} 
-          color="#0ea5e9" 
-          label="Nexus Client" 
+        {/* Core Devices */}
+        <ClientDevice 
+          position={[-6, 0, 0]} 
           active={ftpState !== FTP_STATES.DISCONNECTED} 
         />
-        <RefractiveOrb 
-          position={[5, 0, 0]} 
-          color="#10b981" 
-          label="Aether Core" 
-          active={ftpState === FTP_STATES.LOGGED_IN} 
+        
+        <ServerDevice 
+          position={[6, 0, 0]} 
+          active={ftpState === FTP_STATES.LOGGED_IN || ftpState === FTP_STATES.TRANSFERRING} 
         />
 
-        {/* Connection Paths */}
-        <NeuralPath 
-          p1={[-5, 0, 0]} 
-          p2={[5, 0, 0]} 
-          active={packets.length > 0} 
-          type={packets.some(p => p.type === 'control') ? 'control' : 'data'} 
+        {/* Connective Tissue */}
+        <NetworkChannels 
+          p1={[-6, 0, 0]} 
+          p2={[6, 0, 0]} 
+          packets={packets} 
         />
+
+        {/* Central Status Hologram */}
+        <Html position={[0, 7, 0]} center transform distanceFactor={6}>
+           <div className="tech-panel w-72 p-4 text-center">
+             <div className="text-xl font-black uppercase tracking-[0.2em] tech-text-cyan border-b border-cyan-500/30 pb-2 mb-2">
+                STATUS
+             </div>
+             <div className="text-[10px] font-mono text-emerald-400 mb-2">
+                {ftpState !== FTP_STATES.DISCONNECTED ? "ACTIVE CONNECTION" : "DISCONNECTED"}
+             </div>
+             <div className="text-[10px] font-mono text-slate-300">
+                {activeTransfer ? `TRANSFERRING: ${activeTransfer.name}` : (packets.some(p => p.type === 'data') ? "TRANSMITTING DATA..." : "IDLE")}
+             </div>
+             {activeTransfer && (
+               <div className="mt-3">
+                 <div className="flex justify-between text-[8px] text-cyan-200 mb-1">
+                   <span>SPEED: 25 MB/s</span>
+                   <span>{activeTransfer.progress}%</span>
+                 </div>
+                 <div className="h-1 bg-cyan-900/50 w-full rounded overflow-hidden">
+                   <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${activeTransfer.progress}%` }} />
+                 </div>
+               </div>
+             )}
+           </div>
+        </Html>
 
         {/* Reflection Environment */}
         <Environment preset="city" />
-        <ContactShadows position={[0, -5, 0]} opacity={0.4} scale={20} blur={2.4} far={4.5} />
+        <ContactShadows position={[0, -0.5, 0]} opacity={0.6} scale={25} blur={2.5} far={4} color="#0ea5e9" />
         <BakeShadows />
       </Canvas>
     </div>
   );
 };
+

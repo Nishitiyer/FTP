@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Network, 
   LogIn, 
-  ChevronRight, 
   Settings, 
   Cpu, 
   ShieldCheck, 
@@ -89,10 +88,10 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen w-full relative overflow-hidden text-sky-100 font-sans">
       {/* 3D Cinematic Layer (The Core) */}
-      <Scene ftpState={ftpState} packets={packets} />
+      <Scene ftpState={ftpState} packets={packets} activeTransfer={activeTransfer} />
 
       {/* Holographic Header UI */}
-      <header className="p-8 flex justify-between items-start z-50 pointer-events-none">
+      <header className="p-8 flex justify-between items-start z-50 pointer-events-none relative">
         <div className="pointer-events-auto">
            <div className="flex items-center gap-4 group">
              <div className="p-3 hologram-panel border-[#0ea5e9]/40 rounded-xl relative overflow-hidden group-hover:scale-110 transition-transform cursor-pointer">
@@ -196,29 +195,7 @@ const App = () => {
          </section>
       </div>
 
-      {/* Transfer Progress HUD Overlay */}
-      <AnimatePresence>
-        {activeTransfer && (
-           <motion.div 
-             initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-             className="fixed bottom-12 left-1/2 -translate-x-1/2 w-96 hologram-panel p-6 border-emerald-500 animate-glow-pulse"
-           >
-              <div className="flex justify-between items-end mb-3">
-                 <div className="flex items-center gap-2">
-                    <Zap className="text-emerald-400 animate-pulse" size={14} />
-                    <span className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.2em]">Sync: {activeTransfer.name}</span>
-                 </div>
-                 <span className="text-xs font-mono font-bold text-emerald-300">{activeTransfer.progress}%</span>
-              </div>
-              <div className="h-1.5 bg-[#10b981]/10 rounded-full overflow-hidden border border-emerald-500/20">
-                 <motion.div 
-                    initial={{ width: 0 }} animate={{ width: `${activeTransfer.progress}%` }}
-                    className="h-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]" 
-                 />
-              </div>
-           </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Transfer Progress handled in 3D Scene */}
 
       {/* Corner Metadata Decorators */}
       <div className="absolute top-8 left-8 flex flex-col gap-1 opacity-20 pointer-events-none">

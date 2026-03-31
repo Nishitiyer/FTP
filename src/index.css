@@ -133,3 +133,31 @@ body::after {
 .btn-hologram:active {
   transform: scale(0.95);
 }
+
+/* 3D Scene Tech Panels */
+.tech-panel {
+  background: rgba(4, 21, 36, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2), inset 0 0 20px rgba(16, 185, 129, 0.1);
+  color: #e2e8f0;
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+}
+
+.tech-panel-blue {
+  border-color: rgba(14, 165, 233, 0.5);
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.2), inset 0 0 20px rgba(14, 165, 233, 0.1);
+}
+
+.tech-text-cyan {
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+}
+
+.tech-text-green {
+  color: #10b981;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
