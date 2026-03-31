@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Network, 
   LogIn, 
-  ChevronRight, 
   Settings, 
   Cpu, 
   ShieldCheck, 
@@ -89,10 +88,10 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen w-full relative overflow-hidden text-sky-100 font-sans">
       {/* 3D Cinematic Layer (The Core) */}
-      <Scene ftpState={ftpState} packets={packets} />
+      <Scene ftpState={ftpState} packets={packets} activeTransfer={activeTransfer} />
 
       {/* Holographic Header UI */}
-      <header className="p-8 flex justify-between items-start z-50 pointer-events-none">
+      <header className="p-8 flex justify-between items-start z-50 pointer-events-none relative">
         <div className="pointer-events-auto">
            <div className="flex items-center gap-4 group">
              <div className="p-3 hologram-panel border-[#0ea5e9]/40 rounded-xl relative overflow-hidden group-hover:scale-110 transition-transform cursor-pointer">
@@ -120,58 +119,33 @@ const App = () => {
         </div>
       </header>
 
-      {/* Side HUD Panels */}
-      <div className="absolute inset-0 pointer-events-none flex p-8 gap-8 items-end z-10">
+      {/* Side HUD Panels - Structured Sidebar */}
+      <div className="absolute left-0 top-0 bottom-0 w-[400px] pointer-events-none flex flex-col p-8 pt-32 z-10 bg-gradient-to-r from-[#020617] via-[#020617]/90 to-transparent border-r border-[#0ea5e9]/20 overflow-y-auto">
          
-         {/* System Console */}
-         <section className="w-1/3 h-1/2 flex flex-col gap-4 pointer-events-auto">
-            <div className="hologram-panel flex-1 flex flex-col">
-               <Terminal logs={logs} />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
+         {/* System Controls */}
+         <section className="pointer-events-auto flex flex-col gap-4 mb-6 relative">
+            <div className="absolute -inset-1 bg-emerald-500/10 blur-xl rounded-full" />
+            <div className="hologram-panel p-4 flex flex-col gap-3 relative z-10">
+               <h3 className="text-[10px] font-black uppercase tracking-widest text-[#0ea5e9]/80 border-b border-[#0ea5e9]/20 pb-2">Transmission Link</h3>
                {ftpState === FTP_STATES.DISCONNECTED ? (
-                  <button 
-                    onClick={startSession}
-                    className="col-span-2 btn-hologram animate-pulse"
-                  >
-                    Initialize Connection_
-                  </button>
+                  <button onClick={startSession} className="tech-button">Initialize Connection_</button>
                ) : (
                   <AnimatePresence mode="popLayout">
                     {ftpState === FTP_STATES.CONNECTING ? (
-                       <motion.button 
-                         key="btn-user"
-                         initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                         onClick={() => handleCommand('USER', ['admin'])}
-                         className="btn-hologram col-span-2"
-                       >
-                         IDENT_PROTOCOL: USER admin
-                       </motion.button>
+                        <motion.button 
+                          key="btn-user" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                          onClick={() => handleCommand('USER', ['admin'])} className="tech-button tech-button-blue"
+                        >IDENT_PROTOCOL: USER admin</motion.button>
                     ) : ftpState === FTP_STATES.USER_ACK ? (
-                       <motion.button 
-                         key="btn-pass"
-                         initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                         onClick={() => handleCommand('PASS', ['password123'])}
-                         className="btn-hologram col-span-2 border-emerald-500 text-emerald-500 hover:bg-emerald-500"
-                       >
-                         AUTH_ACCESS: PASS *****
-                       </motion.button>
+                        <motion.button 
+                          key="btn-pass" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                          onClick={() => handleCommand('PASS', ['password123'])} className="tech-button"
+                        >AUTH_ACCESS: PASS *****</motion.button>
                     ) : (
-                       <>
-                         <button 
-                           onClick={() => handleCommand('LIST')}
-                           className="btn-hologram text-[8px]"
-                         >
-                           Query Directory: LIST
-                         </button>
-                         <button 
-                           onClick={() => handleCommand('QUIT')}
-                           className="btn-hologram text-[8px] border-red-500 text-red-500 hover:bg-red-500"
-                         >
-                           Eject_Session: QUIT
-                         </button>
-                       </>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button onClick={() => handleCommand('LIST')} className="tech-button tech-button-blue">Query Server</button>
+                          <button onClick={() => handleCommand('QUIT')} className="tech-button tech-button-red">Eject</button>
+                        </div>
                     )}
                   </AnimatePresence>
                )}
@@ -179,46 +153,27 @@ const App = () => {
          </section>
 
          {/* File System HUD */}
-         <section className="flex-1 h-[70vh] flex gap-8 justify-end pointer-events-auto">
-            <div className="w-[300px]">
+         <section className="flex-1 flex flex-col gap-4 min-h-[400px] pointer-events-auto mt-4">
+            <div className="flex-1 flex flex-col overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
                <FileExplorer files={clientFiles} title="Local Vault" active={true} />
             </div>
-            <div className="w-[350px]">
-               <FileExplorer 
-                  files={serverFiles} 
-                  title="Remote Core" 
-                  active={ftpState === FTP_STATES.LOGGED_IN}
-                  onFileClick={(file) => {
-                    if (ftpState === FTP_STATES.LOGGED_IN) handleCommand('RETR', [file.name]);
-                  }}
-               />
-            </div>
+            {ftpState === FTP_STATES.LOGGED_IN && (
+              <div className="flex-1 flex flex-col overflow-hidden opacity-90 hover:opacity-100 transition-opacity mt-4">
+                 <FileExplorer 
+                    files={serverFiles} title="Remote Core" active={ftpState === FTP_STATES.LOGGED_IN}
+                    onFileClick={(file) => { if (ftpState === FTP_STATES.LOGGED_IN) handleCommand('RETR', [file.name]); }}
+                 />
+              </div>
+            )}
+         </section>
+
+         {/* System Console (Mini) */}
+         <section className="h-48 mt-8 pointer-events-auto opacity-70 hover:opacity-100 transition-opacity hologram-panel flex flex-col">
+            <Terminal logs={logs} />
          </section>
       </div>
 
-      {/* Transfer Progress HUD Overlay */}
-      <AnimatePresence>
-        {activeTransfer && (
-           <motion.div 
-             initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-             className="fixed bottom-12 left-1/2 -translate-x-1/2 w-96 hologram-panel p-6 border-emerald-500 animate-glow-pulse"
-           >
-              <div className="flex justify-between items-end mb-3">
-                 <div className="flex items-center gap-2">
-                    <Zap className="text-emerald-400 animate-pulse" size={14} />
-                    <span className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.2em]">Sync: {activeTransfer.name}</span>
-                 </div>
-                 <span className="text-xs font-mono font-bold text-emerald-300">{activeTransfer.progress}%</span>
-              </div>
-              <div className="h-1.5 bg-[#10b981]/10 rounded-full overflow-hidden border border-emerald-500/20">
-                 <motion.div 
-                    initial={{ width: 0 }} animate={{ width: `${activeTransfer.progress}%` }}
-                    className="h-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]" 
-                 />
-              </div>
-           </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Transfer Progress handled in 3D Scene */}
 
       {/* Corner Metadata Decorators */}
       <div className="absolute top-8 left-8 flex flex-col gap-1 opacity-20 pointer-events-none">
