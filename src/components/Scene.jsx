@@ -330,9 +330,52 @@ const BackgroundPacket = ({ pathPoints, baseColor, speedMultiplier = 1, reverse 
 };
 
 // -------------------------------------------------------------
+// Data Stream Flow (For continuous file transfers)
+// -------------------------------------------------------------
+const DataStream = ({ pathPoints, baseColor, isUploading }) => {
+  const count = 25;
+  const curve = useMemo(() => new THREE.CatmullRomCurve3(pathPoints), [pathPoints]);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const meshRef = useRef();
+  
+  const offsets = useMemo(() => new Array(count).fill(0).map((_, i) => i / count), [count]);
+
+  useFrame((state, delta) => {
+    if (!meshRef.current) return;
+    const speed = 0.5 * delta;
+    
+    for (let i = 0; i < count; i++) {
+      offsets[i] += isUploading ? speed : -speed;
+      if (offsets[i] > 1) offsets[i] -= 1;
+      if (offsets[i] < 0) offsets[i] += 1;
+      
+      const pos = curve.getPointAt(offsets[i]);
+      dummy.position.copy(pos);
+      dummy.rotation.x += 0.1;
+      dummy.rotation.y += 0.1;
+      const scale = 0.2 + Math.sin(offsets[i] * Math.PI) * 0.4;
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    }
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <group>
+      <instancedMesh ref={meshRef} args={[null, null, count]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshPhysicalMaterial color="#ffffff" emissive={baseColor} emissiveIntensity={3} transmission={0.9} roughness={0.1} />
+      </instancedMesh>
+      <pointLight color={baseColor} intensity={2} distance={8} />
+    </group>
+  );
+};
+
+// -------------------------------------------------------------
 // Topology Manager
 // -------------------------------------------------------------
-const NetworkTopology = ({ p1, p2, pBackup, pSecure, packets }) => {
+const NetworkTopology = ({ p1, p2, pBackup, pSecure, packets, activeTransfer }) => {
   // Tube Paths
   const controlCurve = useMemo(() => [
     new THREE.Vector3(...p1).add(new THREE.Vector3(1, 1, 0)),
@@ -381,6 +424,10 @@ const NetworkTopology = ({ p1, p2, pBackup, pSecure, packets }) => {
         curvePoints={secureCurve} innerColor="#06b6d4" outerColor="#0ea5e9"
         label="SECURE CHANNEL (Port 2222)" labelPos={[1, 1, 4]} labelRot={[0, -Math.PI/4, 0]}
       />
+      {/* Active High-Speed Data Stream */}
+      {activeTransfer && (
+        <DataStream pathPoints={dataCurve} baseColor="#34d399" isUploading={activeTransfer.dir === 'upload'} />
+      )}
 
       {/* Background Traffic */}
       <BackgroundPacket pathPoints={backupCurve} baseColor="#ef4444" speedMultiplier={0.8} />
@@ -453,6 +500,7 @@ export const Scene = ({ ftpState, packets, activeTransfer }) => {
           pBackup={[-5, 0, -8]}
           pSecure={[7, 0, 7]}
           packets={packets} 
+          activeTransfer={activeTransfer}
         />
 
         {/* Floating Master Status Display */}
