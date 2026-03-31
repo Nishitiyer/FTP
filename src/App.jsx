@@ -51,7 +51,7 @@ function App() {
   };
 
   return (
-    <div className="fixed inset-0 bg-[#000408] text-white font-mono select-none overflow-hidden flex h-screen w-screen">
+    <div className="app-container">
       
       {/* 1. LEFT CONTROLS */}
       <LeftControlPanel 
@@ -67,7 +67,7 @@ function App() {
       />
 
       {/* 2. CENTER 3D SIMULATOR */}
-      <main className="flex-1 relative overflow-hidden">
+      <div className="main-view">
         <SimulatorScene 
           stage={stage}
           files={INITIAL_FILES}
@@ -80,17 +80,17 @@ function App() {
         />
         
         {/* ABSOLUTE HUD OVERLAYS - Screen filled aesthetics */}
-        <div className="absolute top-10 left-10 pointer-events-none z-10 opacity-40">
-           <span className="text-[10px] font-black uppercase tracking-[0.5em] block">NEXUS_SIM_ENGINE_V4.8</span>
-           <span className="text-[8px] font-black uppercase tracking-[0.8em] block">SYD_NODE_SECURE</span>
+        <div style={{ position: 'absolute', top: 40, left: 40, pointerEvents: 'none', zIndex: 10, opacity: 0.4 }}>
+           <span style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5em', display: 'block' }}>NEXUS_SIM_ENGINE_V4.8</span>
+           <span style={{ fontSize: 8, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8em', display: 'block' }}>SYD_NODE_SECURE</span>
         </div>
         
-        <div className="absolute bottom-10 right-10 pointer-events-none z-10">
-           <div className="px-6 py-2 bg-sky-500 text-black font-black text-[12px] uppercase italic tracking-tighter shadow-[0_0_30px_#0ea5e9]">
+        <div style={{ position: 'absolute', bottom: 40, right: 40, pointerEvents: 'none', zIndex: 10 }}>
+           <div style={{ padding: '8px 24px', backgroundColor: '#0ea5e9', color: '#000', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: '-0.05em', boxShadow: '0 0 30px #0ea5e9' }}>
              TX_ALIVE_{speed}_MB/S
            </div>
         </div>
-      </main>
+      </div>
 
       {/* 3. RIGHT TELEMETRY */}
       <RightStatusPanel 
