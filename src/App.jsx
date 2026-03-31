@@ -2,62 +2,19 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FTP_STATES, RESPONSE_CODES, FTPServer, INITIAL_FILES } from './logic/ftpProtocol';
 import { Terminal } from './components/Terminal';
 import { FileExplorer } from './components/FileExplorer';
-import { NetworkPipeline } from './components/NetworkPipeline';
+import { Scene } from './components/Scene';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Network, 
   LogIn, 
-  Activity, 
+  ChevronRight, 
   Settings, 
-  DownloadCloud, 
-  Info,
-  Server as ServerIcon,
-  Monitor as ClientIcon,
-  ShieldCheck,
-  Zap
+  Cpu, 
+  ShieldCheck, 
+  Activity, 
+  Zap, 
+  Layers
 } from 'lucide-react';
-
-const GlassOrbNode = ({ type, active, label, subtitle }) => {
-  const Icon = type === 'server' ? ServerIcon : ClientIcon;
-  const color = type === 'server' ? 'emerald' : 'blue';
-  
-  return (
-    <div className="relative group flex flex-col items-center">
-      {/* Neural Pulse (Background) */}
-      <AnimatePresence>
-        {active && (
-           <motion.div 
-             initial={{ scale: 0.8, opacity: 0 }}
-             animate={{ scale: 1.5, opacity: 0 }}
-             transition={{ duration: 1, repeat: Infinity }}
-             className={`absolute inset-0 rounded-full border-2 border-${color}-400/30 z-0`}
-           />
-        )}
-      </AnimatePresence>
-      
-      {/* The Orb */}
-      <div className={`w-28 h-28 refractive-orb flex items-center justify-center relative z-10 transition-all duration-500 ${active ? `shadow-glow-${color} scale-110` : 'opacity-60 scale-95'}`}>
-         <div className={`p-4 rounded-3xl bg-${color}-500/10 border border-${color}-400/20 shadow-xl relative overflow-hidden group-hover:scale-110 transition-transform`}>
-            <Icon size={32} className={`text-${color}-400 group-hover:animate-pulse`} />
-         </div>
-         {/* Inner Glow */}
-         <div className={`absolute inset-4 rounded-full blur-2xl opacity-10 bg-${color}-500`} />
-      </div>
-
-      {/* Label & Meta */}
-      <div className="mt-4 text-center">
-         <span className={`text-[10px] font-black uppercase tracking-[0.2em] block mb-1 opacity-60`}>{subtitle}</span>
-         <h3 className={`text-lg font-extrabold tracking-tight ${active ? 'text-white' : 'text-slate-500'}`}>{label}</h3>
-         {active && (
-           <div className={`mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-${color}-500/10 border border-${color}-400/20 inline-flex`}>
-              <div className={`w-1.5 h-1.5 rounded-full bg-${color}-400 animate-pulse`} />
-              <span className={`text-[9px] font-bold uppercase tracking-widest text-${color}-400`}>Online</span>
-           </div>
-         )}
-      </div>
-    </div>
-  );
-};
 
 const App = () => {
   const [ftpState, setFtpState] = useState(FTP_STATES.DISCONNECTED);
@@ -80,18 +37,18 @@ const App = () => {
     setPackets(prev => [...prev, newPacket]);
     setTimeout(() => {
       setPackets(prev => prev.filter(p => p.id !== id));
-    }, 1500);
+    }, 2000);
   }, []);
 
   const handleCommand = async (cmd, argArr = []) => {
     const arg = argArr.join(' ');
-    addLog('cmd', `${cmd} ${arg}`);
+    addLog('cmd', `EXECUTING_CMD: ${cmd} ${arg}`);
     sendPacket('control', cmd, 'c2s');
 
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 1000));
 
     const result = server.current.processCommand(cmd, arg, ftpState);
-    const respText = `${result.code} ${RESPONSE_CODES[result.code] || result.message || ''}`;
+    const respText = `${result.code} // STATUS_OK // ${RESPONSE_CODES[result.code] || result.message || ''}`;
     
     addLog('resp', respText);
     sendPacket('control', result.code.toString(), 's2c');
@@ -101,23 +58,23 @@ const App = () => {
     // Handle special actions
     if (result.code === 150) {
       if (cmd === 'LIST') {
-        sendPacket('data', 'LIST_STREAM', 's2c');
-        await new Promise(r => setTimeout(r, 800));
+        sendPacket('data', 'NET_STREAM_LIST', 's2c');
+        await new Promise(r => setTimeout(r, 1200));
         setServerFiles(result.data);
-        addLog('resp', '226 Transfer complete');
+        addLog('resp', '226 // TRANSFER_COMPLETE // ALL_FILES_SYNCED');
         sendPacket('control', '226', 's2c');
       } else if (cmd === 'RETR') {
         const file = result.file;
         setActiveTransfer({ name: file.name, progress: 0, dir: 'download' });
-        sendPacket('data', `DATASTREAM_${file.name}`, 's2c');
+        sendPacket('data', `RETR_STREAM_${file.name}`, 's2c');
         
         for (let i = 0; i <= 100; i += 10) {
           setActiveTransfer(prev => ({ ...prev, progress: i }));
-          await new Promise(r => setTimeout(r, 250));
+          await new Promise(r => setTimeout(r, 300));
         }
 
         setClientFiles(prev => [...prev, { ...file, name: `${file.name}` }]);
-        addLog('resp', '226 Transfer complete');
+        addLog('resp', '226 // DATA_TRANSFER_VERIFIED // PAYLOAD_DELIVERED');
         sendPacket('control', '226', 's2c');
         setActiveTransfer(null);
       }
@@ -125,202 +82,152 @@ const App = () => {
   };
 
   const startSession = () => {
-    addLog('resp', '220 Welcome to V3-ALCHEMIST FTP Engine');
+    addLog('resp', '220 NEXUS_GATEWAY_V4 READY // ENCRYPTION_ACTIVE');
     setFtpState(FTP_STATES.CONNECTING);
   };
 
   return (
-    <div id="root" className="flex flex-col h-screen font-sans selection:bg-primary/30">
-      {/* Background Cinematic Atmosphere */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-32 bg-primary/5 blur-[120px] rounded-full" />
-      
-      {/* Header */}
-      <header className="flex justify-between items-center p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-50">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-             <div className="p-2.5 bg-blue-500/20 border border-blue-500/40 rounded-xl shadow-glow-blue rotate-3">
-                <Network className="text-blue-400" size={20} />
+    <div className="flex flex-col h-screen w-full relative overflow-hidden text-sky-100 font-sans">
+      {/* 3D Cinematic Layer (The Core) */}
+      <Scene ftpState={ftpState} packets={packets} />
+
+      {/* Holographic Header UI */}
+      <header className="p-8 flex justify-between items-start z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+           <div className="flex items-center gap-4 group">
+             <div className="p-3 hologram-panel border-[#0ea5e9]/40 rounded-xl relative overflow-hidden group-hover:scale-110 transition-transform cursor-pointer">
+                <Layers className="text-[#0ea5e9]" size={28} />
+                <div className="absolute inset-0 bg-[#0ea5e9]/5 animate-pulse" />
              </div>
-             <div className="flex flex-col">
-                <h1 className="text-xl font-extrabold tracking-tighter text-white">GITFTP <span className="text-blue-500">EXCHANGE</span></h1>
-                <span className="text-[9px] font-black uppercase text-blue-500/60 tracking-[0.4em]">Protocol Visualization v3.0</span>
+             <div>
+                <h1 className="text-3xl font-black uppercase tracking-[0.2em] text-[#0ea5e9] drop-shadow-[0_0_15px_rgba(14,165,233,0.5)]">NexusFTP // V4</h1>
+                <div className="flex items-center gap-2 mt-1 text-[8px] font-black tracking-[0.5em] text-[#0ea5e9]/40">
+                   <ShieldCheck size={10} /> 
+                   <span>Secure Protocol // Alchemist Alpha</span>
+                </div>
              </div>
-          </div>
-          
-          <div className="h-8 w-px bg-white/5 mx-2" />
-          
-          <div className="flex items-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 group hover:bg-white/10 transition-all cursor-default">
-                <ShieldCheck size={14} className="text-emerald-500/60 group-hover:text-emerald-500" />
-                <span>Encrypted Session</span>
-             </div>
-             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 group hover:bg-white/10 transition-all cursor-default">
-                <Zap size={14} className="text-blue-400/60 group-hover:text-blue-400" />
-                <span>Zero Latency Sync</span>
-             </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-           <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group">
-             <Settings size={16} className="text-slate-400 group-rotate-90 transition-transform" />
-             <span className="text-xs font-bold text-slate-300">Settings</span>
-           </button>
-           <div className="h-10 w-10 glass-panel flex items-center justify-center p-0.5 border-primary/20">
-              <div className="w-full h-full bg-primary/20 rounded-lg animate-pulse" />
            </div>
+        </div>
+
+        <div className="flex items-center gap-10 opacity-60 pointer-events-auto">
+           <div className="flex items-center gap-2 px-6 py-3 hologram-panel">
+              <Activity size={16} className="text-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Sync: ON</span>
+           </div>
+           <button className="hologram-panel p-3 border-[#0ea5e9]/20 hover:border-[#0ea5e9]/80 transition-all group">
+              <Settings size={20} className="text-[#0ea5e9] group-rotate-90" />
+           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-8 grid grid-cols-12 gap-10 min-h-0 relative z-10">
+      {/* Side HUD Panels */}
+      <div className="absolute inset-0 pointer-events-none flex p-8 gap-8 items-end z-10">
          
-         {/* Left Side: Client Environment */}
-         <section className="col-span-3 flex flex-col gap-6">
-            <GlassOrbNode 
-               type="client" 
-               label="Anthropic-OS" 
-               subtitle="Control Interface"
-               active={ftpState !== FTP_STATES.DISCONNECTED} 
-            />
-            <div className="flex-1 min-h-0">
-               <FileExplorer files={clientFiles} title="Local Filesystem" active={true} />
-            </div>
-            <div className="glass-panel p-6 shadow-glow-blue border-blue-500/20">
-               <h4 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] mb-4">Command Terminal</h4>
-               <div className="space-y-3">
-                  {ftpState === FTP_STATES.DISCONNECTED ? (
-                     <button 
-                       onClick={startSession}
-                       className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-tr from-blue-600 to-blue-400 text-white font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-blue-500/20"
-                     >
-                       <LogIn size={16} /> Establish Handshake
-                     </button>
-                  ) : (
-                     <div className="grid grid-cols-1 gap-2.5">
-                        <AnimatePresence mode="popLayout">
-                           {ftpState === FTP_STATES.CONNECTING ? (
-                              <motion.button 
-                                key="btn-user"
-                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                onClick={() => handleCommand('USER', ['admin'])}
-                                className="w-full py-4 glass-panel border-blue-500/30 text-blue-400 font-black text-[10px] tracking-[0.3em] uppercase hover:bg-blue-500/10 transition-all border-dashed"
-                              >
-                                Identify (USER admin)
-                              </motion.button>
-                           ) : ftpState === FTP_STATES.USER_ACK ? (
-                              <motion.button 
-                                key="btn-pass"
-                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                onClick={() => handleCommand('PASS', ['password123'])}
-                                className="w-full py-4 glass-panel border-emerald-500/30 text-emerald-400 font-black text-[10px] tracking-[0.3em] uppercase hover:bg-emerald-500/10 transition-all border-dashed"
-                              >
-                                Authenticate (PASS *****)
-                              </motion.button>
-                           ) : (
-                              <div className="grid grid-cols-2 gap-2">
-                                 <button 
-                                   onClick={() => handleCommand('LIST')}
-                                   className="py-3 glass-panel border-white/5 text-white/80 font-black text-[9px] tracking-widest uppercase hover:bg-white/5 transition-all"
-                                 >
-                                   List Files
-                                 </button>
-                                 <button 
-                                   onClick={() => handleCommand('QUIT')}
-                                   className="py-3 glass-panel border-red-500/20 text-red-500/80 font-black text-[9px] tracking-widest uppercase hover:bg-red-500/10 transition-all"
-                                 >
-                                   Terminate
-                                 </button>
-                              </div>
-                           )}
-                        </AnimatePresence>
-                     </div>
-                  )}
-               </div>
-            </div>
-         </section>
-
-         {/* Center: Neural Pipeline & Monitoring */}
-         <section className="col-span-5 flex flex-col pt-10">
-            <div className="relative flex-1 mb-8 overflow-visible">
-               <div className="absolute top-0 left-1/2 -translate-x-1/2 z-40 transform -translate-y-4">
-                  {activeTransfer && (
-                     <motion.div 
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="glass-panel px-6 py-3 border-emerald-500/40 shadow-glow-emerald flex items-center gap-4 min-w-[280px]"
-                     >
-                        <div className="p-2 bg-emerald-500/20 rounded-full">
-                           <DownloadCloud className="text-emerald-400 animate-bounce" size={16} />
-                        </div>
-                        <div className="flex-1">
-                           <div className="flex justify-between items-end mb-1.5">
-                              <span className="text-[10px] font-black uppercase text-slate-100 tracking-wider">Syncing {activeTransfer.name}</span>
-                              <span className="text-xs font-mono font-bold text-emerald-400">{activeTransfer.progress}%</span>
-                           </div>
-                           <div className="h-1.5 bg-black/40 rounded-full overflow-hidden p-[1px]">
-                              <motion.div 
-                                 initial={{ width: 0 }}
-                                 animate={{ width: `${activeTransfer.progress}%` }}
-                                 className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.8)]" 
-                              />
-                           </div>
-                        </div>
-                     </motion.div>
-                  )}
-               </div>
-               <NetworkPipeline packets={packets} />
+         {/* System Console */}
+         <section className="w-1/3 h-1/2 flex flex-col gap-4 pointer-events-auto">
+            <div className="hologram-panel flex-1 flex flex-col">
+               <Terminal logs={logs} />
             </div>
             
-            <div className="h-[220px] relative">
-               <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-bg-deep to-transparent z-20 pointer-events-none" />
-               <Terminal logs={logs} />
-               <div className="absolute bottom-4 right-4 text-white/5 pointer-events-none uppercase font-black text-6xl tracking-tighter select-none rotate-2">FTP_V3</div>
+            <div className="grid grid-cols-2 gap-4">
+               {ftpState === FTP_STATES.DISCONNECTED ? (
+                  <button 
+                    onClick={startSession}
+                    className="col-span-2 btn-hologram animate-pulse"
+                  >
+                    Initialize Connection_
+                  </button>
+               ) : (
+                  <AnimatePresence mode="popLayout">
+                    {ftpState === FTP_STATES.CONNECTING ? (
+                       <motion.button 
+                         key="btn-user"
+                         initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                         onClick={() => handleCommand('USER', ['admin'])}
+                         className="btn-hologram col-span-2"
+                       >
+                         IDENT_PROTOCOL: USER admin
+                       </motion.button>
+                    ) : ftpState === FTP_STATES.USER_ACK ? (
+                       <motion.button 
+                         key="btn-pass"
+                         initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                         onClick={() => handleCommand('PASS', ['password123'])}
+                         className="btn-hologram col-span-2 border-emerald-500 text-emerald-500 hover:bg-emerald-500"
+                       >
+                         AUTH_ACCESS: PASS *****
+                       </motion.button>
+                    ) : (
+                       <>
+                         <button 
+                           onClick={() => handleCommand('LIST')}
+                           className="btn-hologram text-[8px]"
+                         >
+                           Query Directory: LIST
+                         </button>
+                         <button 
+                           onClick={() => handleCommand('QUIT')}
+                           className="btn-hologram text-[8px] border-red-500 text-red-500 hover:bg-red-500"
+                         >
+                           Eject_Session: QUIT
+                         </button>
+                       </>
+                    )}
+                  </AnimatePresence>
+               )}
             </div>
          </section>
 
-         {/* Right Side: Remote Nexus */}
-         <section className="col-span-4 flex flex-col gap-6">
-            <GlassOrbNode 
-               type="server" 
-               label="Stark-Cloud-V5" 
-               subtitle="Remote Nexus"
-               active={ftpState === FTP_STATES.LOGGED_IN} 
-            />
-            <div className="flex-1 min-h-0">
+         {/* File System HUD */}
+         <section className="flex-1 h-[70vh] flex gap-8 justify-end pointer-events-auto">
+            <div className="w-[300px]">
+               <FileExplorer files={clientFiles} title="Local Vault" active={true} />
+            </div>
+            <div className="w-[350px]">
                <FileExplorer 
                   files={serverFiles} 
-                  title="Remote Explorer" 
+                  title="Remote Core" 
                   active={ftpState === FTP_STATES.LOGGED_IN}
                   onFileClick={(file) => {
                     if (ftpState === FTP_STATES.LOGGED_IN) handleCommand('RETR', [file.name]);
                   }}
                />
             </div>
-            <div className="glass-panel p-6 border-slate-700/30 bg-slate-800/10 backdrop-blur-sm">
-               <div className="flex items-center gap-2 mb-3">
-                  <Info size={14} className="text-blue-400" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">System Insight</span>
-               </div>
-               <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                  {ftpState === FTP_STATES.DISCONNECTED ? 
-                    "Awaiting initial TCP handshake. Connect to begin command/response sequences." :
-                    ftpState === FTP_STATES.LOGGED_IN ? 
-                    "Control connection active. Select a high-priority data packet from the Remote Explorer to initiate stream." :
-                    "Observing protocol state transitions. Real-time logging active on transmission gateway."}
-               </p>
-            </div>
          </section>
+      </div>
 
-      </main>
+      {/* Transfer Progress HUD Overlay */}
+      <AnimatePresence>
+        {activeTransfer && (
+           <motion.div 
+             initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
+             className="fixed bottom-12 left-1/2 -translate-x-1/2 w-96 hologram-panel p-6 border-emerald-500 animate-glow-pulse"
+           >
+              <div className="flex justify-between items-end mb-3">
+                 <div className="flex items-center gap-2">
+                    <Zap className="text-emerald-400 animate-pulse" size={14} />
+                    <span className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.2em]">Sync: {activeTransfer.name}</span>
+                 </div>
+                 <span className="text-xs font-mono font-bold text-emerald-300">{activeTransfer.progress}%</span>
+              </div>
+              <div className="h-1.5 bg-[#10b981]/10 rounded-full overflow-hidden border border-emerald-500/20">
+                 <motion.div 
+                    initial={{ width: 0 }} animate={{ width: `${activeTransfer.progress}%` }}
+                    className="h-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]" 
+                 />
+              </div>
+           </motion.div>
+        )}
+      </AnimatePresence>
 
-      <footer className="h-10 border-t border-white/5 flex items-center justify-center px-10 relative overflow-hidden">
-         <div className="absolute inset-0 bg-white/[0.02] animate-pulse" />
-         <span className="text-[9px] font-black uppercase text-slate-600 tracking-[0.5em] relative z-10">
-             Advanced Protocol Orchestrator & Neural Visualizer // Stark Workspace Industries
-         </span>
-      </footer>
+      {/* Corner Metadata Decorators */}
+      <div className="absolute top-8 left-8 flex flex-col gap-1 opacity-20 pointer-events-none">
+         <div className="flex items-center gap-2 text-[8px] font-black text-sky-400 uppercase tracking-[0.4em]"><Cpu size={12} /> Neural Core I9</div>
+         <div className="h-[2px] w-32 bg-sky-500/20" />
+      </div>
+      
+      {/* Decorative Scanlines Mask */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] z-[1001]" />
     </div>
   );
 };
