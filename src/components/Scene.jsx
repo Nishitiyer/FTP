@@ -503,37 +503,37 @@ export const Scene = ({ ftpState, packets, activeTransfer }) => {
           activeTransfer={activeTransfer}
         />
 
-        {/* Floating Master Status Display */}
-        <Html position={[0, 10, -2]} center transform distanceFactor={8} rotation={[Math.PI/12, 0, 0]}>
-           <div className="tech-panel p-6 bg-black/80 backdrop-blur-xl border border-emerald-500/50 min-w-[320px] rounded-xl shadow-[0_0_40px_rgba(16,185,129,0.15)]">
+        {/* Floating Master Status Display - Relocated to the side for uninterrupted view */}
+        <Html position={[10, 14, -5]} center transform distanceFactor={10} rotation={[0, -Math.PI / 4, 0]}>
+           <div className="tech-panel p-6 bg-black/80 backdrop-blur-xl border border-emerald-500/50 min-w-[320px] rounded-xl shadow-[0_0_40px_rgba(16,185,129,0.15)] opacity-90 scale-125">
              <div className="flex justify-between items-center border-b border-emerald-500/30 pb-3 mb-3">
                 <span className="text-[18px] font-black uppercase tracking-[0.2em] tech-text-green">
-                   SYSTEM STATUS
+                   DAEMON_STATUS
                 </span>
                 <span className={`w-3 h-3 rounded-full ${ftpState !== FTP_STATES.DISCONNECTED ? 'bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse' : 'bg-red-500'}`} />
              </div>
              
              <div className="grid grid-cols-2 gap-4 text-[10px] font-mono mb-4">
                 <div>
-                   <div className="text-slate-500 mb-1">CONNECTION STATE</div>
-                   <div className="text-emerald-400 font-bold">{ftpState !== FTP_STATES.DISCONNECTED ? "ACTIVE / SECURED" : "DISCONNECTED / OFFLINE"}</div>
+                   <div className="text-slate-500 mb-1 font-bold">LINK_STATE</div>
+                   <div className="text-emerald-400 font-bold">{ftpState !== FTP_STATES.DISCONNECTED ? "TUNNEL_ESTABLISHED" : "LINK_TERMINATED"}</div>
                 </div>
                 <div>
-                   <div className="text-slate-500 mb-1">DATA CHANNELS</div>
-                   <div className="text-cyan-400 font-bold">{activeTransfer ? "Tx/Rx ACTIVE" : (packets.some(p => p.type === 'data') ? "TRANSMITTING..." : "IDLE / STANDBY")}</div>
+                   <div className="text-slate-500 mb-1 font-bold">DATA_BANDWIDTH</div>
+                   <div className="text-cyan-400 font-bold">{activeTransfer ? "Tx/Rx_MAX_STREAM" : (packets.some(p => p.type === 'data') ? "TRANSMITTING..." : "SPECTRAL_IDLE")}</div>
                 </div>
              </div>
 
              {activeTransfer && (
-               <div className="mt-4 p-3 bg-[#022c22] rounded border border-emerald-500/30">
+               <div className="mt-4 p-3 bg-[#022c22]/50 rounded border border-emerald-500/30 backdrop-blur-sm">
                  <div className="flex justify-between text-[10px] uppercase font-bold text-emerald-300 mb-2">
-                   <span>TRANSFERRING: {activeTransfer.name}</span>
+                   <span>STREAMING: {activeTransfer.name}</span>
                    <span>{activeTransfer.progress}%</span>
                  </div>
                  <div className="h-1.5 bg-[#064e3b] w-full rounded overflow-hidden">
-                   <div className="h-full bg-[#34d399] transition-all duration-300 shadow-[0_0_10px_#34d399]" style={{ width: `${activeTransfer.progress}%` }} />
+                   <div className="h-full bg-[#34d399] transition-all duration-300 shadow-[0_0_15px_#34d399]" style={{ width: `${activeTransfer.progress}%` }} />
                  </div>
-                 <div className="text-[8px] text-emerald-500/70 mt-2 text-right">SPEED: 25.4 MB/s · EST: 0.2s</div>
+                 <div className="text-[8px] text-emerald-500/70 mt-2 text-right tracking-widest font-bold">BURST: 2.1 Gb/s · LATENCY: 2ms</div>
                </div>
              )}
            </div>
