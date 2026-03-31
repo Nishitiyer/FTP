@@ -200,7 +200,13 @@ const App = () => {
       {/* Right: Expansive 3D Hologram Area */}
       <div className="flex-1 h-full relative bg-[#01040a]">
          <div className="w-full h-full relative overflow-hidden">
-            <Scene ftpState={ftpState} packets={packets} activeTransfer={activeTransfer} />
+            <Scene 
+              ftpState={ftpState} 
+              packets={packets} 
+              activeTransfer={activeTransfer} 
+              clientFiles={clientFiles} 
+              serverFiles={serverFiles} 
+            />
             
             {/* Ambient vignette for depth */}
             <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] z-10" />

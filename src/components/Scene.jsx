@@ -43,7 +43,11 @@ const UIPanel = ({ title, subtitle, items, color, glowingColor, width = "w-72" }
 // -------------------------------------------------------------
 // Nodes / Servers
 // -------------------------------------------------------------
-const ClientDevice = ({ position, active }) => {
+const ClientDevice = ({ position, active, files }) => {
+  const fileItems = useMemo(() => {
+    return files.slice(0, 4).map(f => ({ label: f.name, icon: f.type === 'dir' ? '📂' : '📄' }));
+  }, [files]);
+
   return (
     <group position={position}>
       {/* High-Tech Pad Base */}
@@ -63,51 +67,59 @@ const ClientDevice = ({ position, active }) => {
          <pointLight color="#0ea5e9" intensity={2} distance={8} />
       </Cylinder>
 
-      {/* Floating Refractive Cubes representing File Categories */}
-      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5} position={[-0.8, 1.8, 0.5]}>
-         <Box args={[1.2, 1.2, 1.2]}>
-           <meshPhysicalMaterial 
-             color="#38bdf8" transmission={0.9} opacity={1} transparent roughness={0.1} thickness={0.5} clearcoat={1} emissive="#0ea5e9" emissiveIntensity={0.2}
-           />
-           <Edges color="#bae6fd" />
-           <Html position={[0, 0.9, 0]} center transform distanceFactor={5}>
-             <div className="px-2 py-0.5 bg-sky-900/80 border border-sky-400 text-[6px] font-bold text-sky-100 rounded">Documents</div>
-           </Html>
-         </Box>
-      </Float>
-      
-      <Float speed={2.5} rotationIntensity={0.8} floatIntensity={0.6} position={[0.8, 1.5, -0.8]}>
-         <Box args={[0.9, 0.9, 0.9]}>
-           <meshPhysicalMaterial color="#818cf8" transmission={0.9} roughness={0.1} thickness={0.5} clearcoat={1} emissive="#6366f1" emissiveIntensity={0.3}/>
-           <Edges color="#c7d2fe" />
-         </Box>
-      </Float>
-      
-      <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.8} position={[-0.2, 2.5, -1]}>
-         <Box args={[1, 1, 1]}>
-           <meshPhysicalMaterial color="#f472b6" transmission={0.9} roughness={0.1} thickness={0.5} clearcoat={1} emissive="#ec4899" emissiveIntensity={0.2}/>
-           <Edges color="#fbcfe8" />
-         </Box>
-      </Float>
+      {/* Floating Refractive Cubes representing Actual Files */}
+      {files.map((file, i) => (
+        <Float 
+          key={file.name + i} 
+          speed={1.5 + Math.random()} 
+          rotationIntensity={0.5} 
+          floatIntensity={0.5} 
+          position={[
+            (i % 3 - 1) * 1.2, 
+            2 + Math.floor(i / 3) * 1.2, 
+            (Math.floor(i / 3) % 2 === 0 ? 0.5 : -0.5)
+          ]}
+        >
+           <Box args={[0.8, 0.8, 0.8]}>
+             <meshPhysicalMaterial 
+               color={file.type === 'dir' ? "#38bdf8" : "#818cf8"} 
+               transmission={0.9} 
+               opacity={1} 
+               transparent 
+               roughness={0.1} 
+               thickness={0.5} 
+               clearcoat={1} 
+               emissive={file.type === 'dir' ? "#0ea5e9" : "#6366f1"} 
+               emissiveIntensity={0.2}
+             />
+             <Edges color={file.type === 'dir' ? "#bae6fd" : "#c7d2fe"} />
+             <Html position={[0, 0.6, 0]} center transform distanceFactor={5}>
+               <div className="px-1.5 py-0.5 bg-black/60 border border-white/20 text-[5px] font-bold text-white rounded whitespace-nowrap">
+                  {file.name}
+               </div>
+             </Html>
+           </Box>
+        </Float>
+      ))}
 
       {/* UI Overlay */}
-      <Html position={[-3, 4, 0]} transform distanceFactor={7} rotation={[0, Math.PI/6, 0]}>
+      <Html position={[-3, 6, 0]} transform distanceFactor={7} rotation={[0, Math.PI/6, 0]}>
          <UIPanel 
-           title="FTP CLIENT" 
-           subtitle="SERVER SELECTION // NETWORK STATUS"
+           title="CLIENT_VAULT" 
+           subtitle={`TOTAL_OBJECTS: ${files.length} // STATUS: ACTIVE`}
            glowingColor="#0ea5e9"
-           items={[
-             { label: 'LOCAL DRIVE (Mounted)', icon: '💾' },
-             { label: 'REMOTE SERVER (Connected)', icon: '🌐' },
-             { label: 'SECURE TUNNEL (Standby)', icon: '🛡️' }
-           ]}
+           items={fileItems.length > 0 ? fileItems : [{ label: 'VAULT_EMPTY', icon: '⚠️' }]}
          />
       </Html>
     </group>
   );
 };
 
-const ServerDevice = ({ position, active }) => {
+const ServerDevice = ({ position, active, files }) => {
+  const fileItems = useMemo(() => {
+    return files.slice(0, 4).map(f => ({ label: f.name, icon: f.type === 'dir' ? '📂' : '📄' }));
+  }, [files]);
+
   return (
     <group position={position}>
       {/* Massive Server Tower */}
@@ -134,25 +146,21 @@ const ServerDevice = ({ position, active }) => {
          {active && <pointLight color="#10b981" intensity={5} distance={20} />}
       </Box>
 
-      {/* Detailed Front Panel Data Slots */}
-      {[2.5, 3.5, 5.5, 6.5, 7.5].map((y, i) => (
+      {/* Detailed Front Panel Data Slots - Static logic changed to reflect server activity */}
+      {[2.5, 3.5, 4.5, 5.5, 6.5, 7.5].map((y, i) => (
         <mesh key={i} position={[0, y, 2.05]}>
           <boxGeometry args={[2.5, 0.4, 0.1]} />
-          <meshBasicMaterial color={active && Math.random() > 0.3 ? "#34d399" : "#022c22"} />
+          <meshBasicMaterial color={(active && i < files.length) ? "#34d399" : "#022c22"} />
         </mesh>
       ))}
 
       {/* Server UI Overlay */}
       <Html position={[3.5, 6, 0]} transform distanceFactor={7} rotation={[0, -Math.PI/6, 0]}>
          <UIPanel 
-           title="REMOTE SERVER" 
-           subtitle="FTP SERVER: 192.168.1.100 // PORT 21"
+           title="REMOTE_CORE" 
+           subtitle={active ? "LINK_READY // 192.168.1.100" : "LINK_OFFLINE // NO_HANDSHAKE"}
            glowingColor="#10b981"
-           items={[
-             { label: '/var/www/html (Root)', icon: '📂' },
-             { label: '/images (755)', icon: '🖼️' },
-             { label: '/logs (Secure)', icon: '🔒' }
-           ]}
+           items={active ? (fileItems.length > 0 ? fileItems : [{ label: 'DIRECTORY_EMPTY', icon: '❓' }]) : [{ label: 'WAITING_FOR_AUTH', icon: '🔐' }]}
          />
       </Html>
     </group>
@@ -450,7 +458,7 @@ const NetworkTopology = ({ p1, p2, pBackup, pSecure, packets, activeTransfer }) 
 // -------------------------------------------------------------
 // Main Scene
 // -------------------------------------------------------------
-export const Scene = ({ ftpState, packets, activeTransfer }) => {
+export const Scene = ({ ftpState, packets, activeTransfer, clientFiles, serverFiles }) => {
   return (
     <div className="absolute inset-0 w-full h-full z-0 pointer-events-auto">
       <Canvas shadows gl={{ antialias: true, alpha: false, logarithmicDepthBuffer: true }}>
@@ -483,11 +491,13 @@ export const Scene = ({ ftpState, packets, activeTransfer }) => {
         <ClientDevice 
           position={[-7, 0, 3]} 
           active={ftpState !== FTP_STATES.DISCONNECTED} 
+          files={clientFiles || []}
         />
         
         <ServerDevice 
           position={[7, 0, -3]} 
           active={ftpState === FTP_STATES.LOGGED_IN || ftpState === FTP_STATES.TRANSFERRING} 
+          files={serverFiles || []}
         />
 
         <BackupServer position={[-5, 0, -8]} />
